@@ -1,0 +1,53 @@
+import java.net.MalformedURLException;
+import java.rmi.Naming;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
+
+public class Server extends UnicastRemoteObject implements IServer {
+	
+	private static final long serialVersionUID = -7438376157658248593L;
+	
+	/**
+	 * 
+	 */
+	public Server() throws RemoteException{
+		try {
+			Naming.rebind("rmi://localhost/request", this);
+			System.out.println("Server is ready."); //RMI bind
+		} catch (MalformedURLException e) {
+			System.err.println("Server failed.");
+		}
+	}
+	
+	public static void main(String[] args) {
+		
+		if(args.length != 1) {
+			System.err.println("\"Utilizacao incorrecta. \\n Usage : Server <port> \\n exemplo: Server 23456\"");
+		}
+		else {
+			System.out.println("Server"+'\n'+ "Port: " + args[0]);
+			
+			int port = Integer.parseInt(args[0]);
+			
+			try {
+				Server server = new Server();
+			} catch (RemoteException e) {
+				System.err.println(e.getMessage());
+			}
+			
+			Server.startServer(port);
+			
+		}
+		
+	}
+	
+	private static void startServer(int port) {
+		
+		
+	}
+
+	public String request(String s, int id) {
+		return "Request processed";
+	}
+	
+}

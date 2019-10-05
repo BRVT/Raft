@@ -1,0 +1,16 @@
+import java.rmi.Naming;
+
+public class SimpleClient {
+
+	public static void main(String[] args) {
+		ISimpleClient simple;
+		
+		try {
+			simple = (ISimpleClient) Naming.lookup("rmi://localhost/server");
+			
+			String request;
+			Object id;
+			String reply = simple.request(request, id);
+		}
+	}
+}
