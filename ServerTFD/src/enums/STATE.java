@@ -1,4 +1,4 @@
-package State;
+package enums;
 
 
 public enum STATE {
