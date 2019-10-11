@@ -1,28 +1,51 @@
 package server.main;
 
-import server.Server;
+import java.rmi.Naming;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+
+import server.constants.Constants;
+import server.service.ServerService;
 
 public class ServerMain {
 
 	public static void main(String[] args) {
-		Server server;
+		ServerService server;
 		if(args.length != 2){
 			System.err.println("Uso errado");
 		}
 		
 		int port = Integer.parseInt(args[0]);
+		
+		if(!checkPortValue(port)) {
+			System.err.println("Porto errado, use um destes:");
+			Constants.PORTS_FOR_SERVER_REGISTRIES.iterator().forEachRemaining(p -> System.out.println(p));
+		}
+		
 		int role = Integer.parseInt(args[1]);
 		
 		try{
-			server = new Server();
-			server.startServer(port, role);
+			server = new ServerService();
+//			startServer(server, port, role);
+			Naming.rebind("rmi://localhost/server", server);
+			
+			Registry reg = LocateRegistry.createRegistry(port);
+			
 			System.out.println("Server estah a escutar no porto " + args[0]);
 		}catch(Exception e){
 			System.err.println(e.getMessage());
 		
 		}
-
+	
 		
 	}
+
+	private static boolean checkPortValue(int port) {
+		
+		return Constants.PORTS_FOR_SERVER_REGISTRIES.contains(port);
+		
+	}
+	
+	
 
 }
