@@ -14,8 +14,8 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 	
 	private Server server;
 	
-	public ServerService() throws RemoteException {
-		server = new Server();
+	public ServerService(int role) throws RemoteException {
+		server = new Server(role);
 	}
 	
 	public String request(String s, int id) throws RemoteException{

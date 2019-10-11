@@ -17,27 +17,29 @@ public class ServerMain {
 		
 		int port = Integer.parseInt(args[0]);
 		
-		if(!checkPortValue(port)) {
-			System.err.println("Porto errado, use um destes:");
-			Constants.PORTS_FOR_SERVER_REGISTRIES.iterator().forEachRemaining(p -> System.out.println(p));
-		}
+//		if(!checkPortValue(port)) {
+//			System.err.println("Porto errado, use um destes:");
+//			Constants.PORTS_FOR_SERVER_REGISTRIES.iterator().forEachRemaining(p -> System.out.println(p));
+//		}
 		
 		int role = Integer.parseInt(args[1]);
 		
 		try{
-			server = new ServerService();
-//			startServer(server, port, role);
-			Naming.rebind("rmi://localhost/server", server);
+			server = new ServerService(role);
 			
 			Registry reg = LocateRegistry.createRegistry(port);
 			
+			reg.rebind("rmi://localhost/server", server);
+			
+			System.out.println("Vai criar registry");
+			
 			System.out.println("Server estah a escutar no porto " + args[0]);
+			
 		}catch(Exception e){
 			System.err.println(e.getMessage());
 		
 		}
 	
-		
 	}
 
 	private static boolean checkPortValue(int port) {
@@ -46,6 +48,4 @@ public class ServerMain {
 		
 	}
 	
-	
-
 }
