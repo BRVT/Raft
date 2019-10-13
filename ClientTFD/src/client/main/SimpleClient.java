@@ -19,7 +19,7 @@ public class SimpleClient {
 		
 		try {
 
-			simple = locateAux(1234, "rmi://localhost/server");
+			simple = locateAux(1235, "rmi://localhost/server");
 			
 			Scanner s = new Scanner(System.in);
 			
