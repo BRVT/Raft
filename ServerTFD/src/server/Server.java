@@ -8,6 +8,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.*;
 
+import DTO.LogEntry;
 import enums.STATE;
 import server.constants.Constants;
 import server.service.IServerService;
@@ -26,8 +27,9 @@ public class Server implements IServer {
 	private Timer timer_state;
 
 
-	private ArrayList<IServerService> servers;
-
+	private LogEntry log;
+	
+	private Map<IServerService, Integer> servers;
 
 	private ArrayList<Integer> servers_state_off;
 
@@ -35,21 +37,25 @@ public class Server implements IServer {
 		this.port = port;
 		this.term = 0;
 		this.state = STATE.values()[role];
-		this.servers = new ArrayList<IServerService>();
+
 		this.servers_state_off = new ArrayList<Integer>();
 
+		this.servers = new HashMap<>();
 
-
+		this.log = new LogEntry();
+		
 		//heartbeat
 		if(state.equals(STATE.LEADER)) {
 
 			if(term == 0) {
+				log.createFile(this.port);
+				
 				addRegistries();
 
-				for (IServerService server : servers) {
+				for (Map.Entry<IServerService, Integer> server : servers.entrySet()) {
 					try {
-
-						System.out.println(server.AppendEntriesRPC(0, getPort(), 0, 0, null, 0));
+						
+						System.out.println(server.getKey().AppendEntriesRPC(0, getPort(), 0, 0, null, 0));
 					} catch (RemoteException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -136,7 +142,7 @@ public class Server implements IServer {
 			System.out.println("Time's up!");
 			timer_state.cancel(); 
 
-			//time out --> eleicao
+			//time out --> eleicao   
 			if(servers_state_off.size() > 0) {
 				for (int i = 0; i < servers_state_off.size(); i++) {
 					if(checkRegistry(servers_state_off.get(i))) {
@@ -153,7 +159,7 @@ public class Server implements IServer {
 			try {
 				r = LocateRegistry.getRegistry(port);
 
-				servers.add((IServerService) r.lookup(ADRESS));
+				servers.put((IServerService) r.lookup(ADRESS),port);
 
 			} catch (Exception e) {
 				return false;
@@ -164,6 +170,7 @@ public class Server implements IServer {
 
 	}
 
+	
 	public void resetTimer() {
 		timer.cancel(); 
 		timer = new Timer();
@@ -174,12 +181,13 @@ public class Server implements IServer {
 	@Override
 	public String request(String s, int id) throws RemoteException {
 		if(this.isLeader()) {
-			//fazer operaçao como lider
-			System.out.println("vou mandar o resultado do request");
-			return s;
+			
+			log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
+			
+			return s.split("_")[1] ;
 		}
 		else {
-			//devolve porto do 
+			//devolve porto do LIDER
 			System.out.println("vou mandar o porto do lider");
 			return "& " + String.valueOf(leader);
 		}
@@ -206,12 +214,14 @@ public class Server implements IServer {
 
 	public void sendHeartBeat() {
 
-		for (IServerService server : servers) {
+		for (Map.Entry<IServerService, Integer>  server : servers.entrySet()) {
 			try {
 
-				server.AppendEntriesRPC(term, getPort(), 0, 0, null, 0);
+				server.getKey().AppendEntriesRPC(term, getPort(), 0, 0, null, 0);
 			} catch (Exception e) {
 
+				servers.remove(server.getKey());
+				servers_state_off.add(server.getValue());
 				continue;
 			}
 		}
@@ -225,7 +235,7 @@ public class Server implements IServer {
 				try {
 					r = LocateRegistry.getRegistry(port);
 
-					servers.add((IServerService) r.lookup(ADRESS));
+					servers.put((IServerService) r.lookup(ADRESS),port);
 
 				}catch (Exception e) {
 					servers_state_off.add(port);
@@ -243,7 +253,7 @@ public class Server implements IServer {
 			String[] entries, int leaderCommit) {
 
 		if(prevLogTerm == 0 && entries == null && leaderCommit == 0) {
-			System.out.println("heartbeat");
+			
 			resetTimer();
 		}
 
