@@ -26,9 +26,11 @@ public class Server implements IServer {
 	private Timer heartbeat;
 	private Timer timer_state;
 
-
-	private LogEntry log;
+	private boolean pendentEntries;
+	private ArrayList<String> pendentEntry;
 	
+	private LogEntry log;
+
 	private Map<IServerService, Integer> servers;
 
 	private ArrayList<Integer> servers_state_off;
@@ -38,23 +40,28 @@ public class Server implements IServer {
 		this.term = 0;
 		this.state = STATE.values()[role];
 
+		this.pendentEntries = false;
+		this.pendentEntry = new ArrayList<>(); 
+		
+		
 		this.servers_state_off = new ArrayList<Integer>();
 
 		this.servers = new HashMap<>();
 
 		this.log = new LogEntry();
-		
-		//heartbeat
+
+		log.createFile(this.port);
+
 		if(state.equals(STATE.LEADER)) {
 
 			if(term == 0) {
-				log.createFile(this.port);
-				
+
+
 				addRegistries();
 
 				for (Map.Entry<IServerService, Integer> server : servers.entrySet()) {
 					try {
-						
+
 						System.out.println(server.getKey().AppendEntriesRPC(0, getPort(), 0, 0, null, 0));
 					} catch (RemoteException e) {
 						// TODO Auto-generated catch block
@@ -170,7 +177,7 @@ public class Server implements IServer {
 
 	}
 
-	
+
 	public void resetTimer() {
 		timer.cancel(); 
 		timer = new Timer();
@@ -181,9 +188,10 @@ public class Server implements IServer {
 	@Override
 	public String request(String s, int id) throws RemoteException {
 		if(this.isLeader()) {
-			
+
 			log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
 			
+			this.pendentEntry.add(s);
 			return s.split("_")[1] ;
 		}
 		else {
@@ -216,8 +224,14 @@ public class Server implements IServer {
 
 		for (Map.Entry<IServerService, Integer>  server : servers.entrySet()) {
 			try {
-
-				server.getKey().AppendEntriesRPC(term, getPort(), 0, 0, null, 0);
+				if(this.pendentEntry.size()>0) {
+					server.getKey().AppendEntriesRPC(term, getPort(), 0, 0, this.pendentEntry.toArray(new String[0]), 0);
+				}else {
+					
+					server.getKey().AppendEntriesRPC(term, getPort(), 0, 0, null, 0);
+				}
+					
+				
 			} catch (Exception e) {
 
 				servers.remove(server.getKey());
@@ -252,12 +266,16 @@ public class Server implements IServer {
 	public String receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm,
 			String[] entries, int leaderCommit) {
 
-		if(prevLogTerm == 0 && entries == null && leaderCommit == 0) {
-			
+		if(entries == null) {
+
 			resetTimer();
+		}else {
+			for (String s : entries) {
+				log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
+			}
 		}
 
-
+		
 		this.leader = leaderID;
 
 		return "recebi " + this.port;

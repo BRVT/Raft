@@ -25,6 +25,7 @@ public class SimpleClient {
 			simple = locateAux(1234, "rmi://localhost/server");
 			String uniqueID = UUID.randomUUID().toString().split("-")[0];
 
+			
 			Scanner s = new Scanner(System.in);
 
 			System.out.println("Insira String: ");
