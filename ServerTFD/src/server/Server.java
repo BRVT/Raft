@@ -15,7 +15,8 @@ import server.service.IServerService;
 
 public class Server implements IServer {
 	private static final String ADRESS = "rmi://localhost/server";
-
+	private static final int N_SERVERS = 4;
+	
 	private int port;
 	private int leader;
 
@@ -28,8 +29,9 @@ public class Server implements IServer {
 
 	private boolean pendentEntries;
 	private ArrayList<String> pendentEntry;
-	
+
 	private LogEntry log;
+	
 
 	private Map<IServerService, Integer> servers;
 
@@ -42,8 +44,8 @@ public class Server implements IServer {
 
 		this.pendentEntries = false;
 		this.pendentEntry = new ArrayList<>(); 
-		
-		
+
+
 		this.servers_state_off = new ArrayList<Integer>();
 
 		this.servers = new HashMap<>();
@@ -94,34 +96,7 @@ public class Server implements IServer {
 
 	}
 
-	class AppendEntry implements Runnable{
-		private int prevLogIndex;
-		private int prevLogTerm;
-		private String[] entries;
-		private int leaderCommit;
 
-		private IServerService server;
-
-		public AppendEntry (IServerService server, int prevLogIndex, int prevLogTerm,
-				String[] entries, int leaderCommit){
-
-			this.server = server;
-			this.prevLogIndex = prevLogIndex;
-			this.prevLogTerm = prevLogTerm;
-			this.entries = entries;
-			this.leaderCommit = leaderCommit;
-		}
-
-
-		public void run() {
-			try {
-				server.AppendEntriesRPC(prevLogTerm, getPort(), prevLogIndex, prevLogTerm, entries, leaderCommit);
-			} catch (RemoteException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	} 
 	class RemindTaskHeartBeat extends TimerTask {
 
 		public void run() {
@@ -190,7 +165,7 @@ public class Server implements IServer {
 		if(this.isLeader()) {
 
 			log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
-			
+
 			this.pendentEntry.add(s);
 			return s.split("_")[1] ;
 		}
@@ -220,27 +195,54 @@ public class Server implements IServer {
 		return randomValue;
 	}
 
-	public void sendHeartBeat() {
-
+	public boolean sendHeartBeat() {
+		int not_written = 0;
+		int n_servers = 0;
 		for (Map.Entry<IServerService, Integer>  server : servers.entrySet()) {
+			
 			try {
+				
 				if(this.pendentEntry.size()>0) {
-					server.getKey().AppendEntriesRPC(term, getPort(), 0, 0, this.pendentEntry.toArray(new String[0]), 0);
-				}else {
+
+					if(!server.getKey().AppendEntriesRPC(term, getPort(), 0, 0, pendentEntry.get(0), 0)) {
+						not_written ++;
+					}
+
 					
+					
+					n_servers ++;
+				}else {
+
 					server.getKey().AppendEntriesRPC(term, getPort(), 0, 0, null, 0);
 				}
-					
+
 				
 			} catch (Exception e) {
 
 				servers.remove(server.getKey());
 				servers_state_off.add(server.getValue());
+				
 				continue;
 			}
 		}
+		
+		if(not_written > (n_servers/2)) {
+			return false;
+		}else {
+			commitEntry(pendentEntry.get(0));
+			pendentEntry.remove(0);
+			
+			return true;
+		}
+		
+		
 	}
-
+	
+	//classe para dar commit
+	public void commitEntry(String s) {
+		log.commitEntry(s);
+	}
+	
 	public void addRegistries() {
 		for (Integer port : Constants.PORTS_FOR_SERVER_REGISTRIES) {
 
@@ -263,22 +265,22 @@ public class Server implements IServer {
 		}
 	}
 
-	public String receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm,
-			String[] entries, int leaderCommit) {
+	public boolean receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm,
+			String entry, int leaderCommit) {
 
-		if(entries == null) {
 
+
+		if(entry == null) 
 			resetTimer();
-		}else {
-			for (String s : entries) {
-				log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
-			}
+		else {
+
+			return log.writeLog(entry.split("_")[1] , this.term, false, entry.split("_")[0] ) ;
+
 		}
 
-		
-		this.leader = leaderID;
 
-		return "recebi " + this.port;
+
+		return true;
 
 	}
 }

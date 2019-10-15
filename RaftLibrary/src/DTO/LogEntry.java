@@ -12,13 +12,17 @@ public class LogEntry {
 	// - 
 	private File f;
 	private File dir;
+	
 	private int index;
+	private int index_last_comitted;
+	
 	private Map<String,Entry> entries;
 	private String bar;
 	
 	public LogEntry() {
 		this.entries = new HashMap<>();
 		this.index = 0;
+		this.index_last_comitted = 0;
 		this.bar = System.getProperty("file.separator");
 	}
 	public void createFile(int port) {
@@ -60,7 +64,13 @@ public class LogEntry {
 		String st = ""; 
 		try {
 			while ((st = br.readLine()) != null) {
-				entries.put(st.split(":")[4], Entry.setEntry(st));
+				Entry e = Entry.setEntry(st);
+				entries.put(st.split(":")[4], e);
+				
+				if(e.isComitted()) {
+					this.index_last_comitted ++;
+				}
+				
 				index ++;
 			}
 		} catch (NumberFormatException | IOException e) {
@@ -72,10 +82,10 @@ public class LogEntry {
 	}
 	
 	
-	public void writeLog(String command, int term, boolean commited, String id_command) {
+	public boolean writeLog(String command, int term, boolean commited, String id_command) {
 
 		if(entries.get(id_command) != null) {
-			System.out.println("olaaaaaa");
+			
 		}else {
 		
 		
@@ -91,14 +101,18 @@ public class LogEntry {
 			writer.write(entry.toString());
 			writer.newLine();
 			writer.close();
+			
+			return true;
+			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return false;
 		}
 
 		}
-
+		return false;
 	}
+	
+	
 	public static class Entry{
 		private int index;
 		private String command;
@@ -126,7 +140,16 @@ public class LogEntry {
 					(array[4]));
 		}
 		
-		
+		public boolean isComitted() {
+			return commited;
+		}
 
 	}
+
+
+	public void commitEntry(String s) {
+	
+		
+	}
+	
 }

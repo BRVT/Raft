@@ -31,7 +31,7 @@ public class SimpleClient {
 			System.out.println("Insira String: ");
 			String request = s.nextLine();
 			int id = 0;
-			while(request != "quit") {
+			while(!request.equals("quit")) {
 				String teste = uniqueID+"|"+id + "_" +request;
 				
 				
