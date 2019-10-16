@@ -25,7 +25,7 @@ public class ServerMain {
 		int role = Integer.parseInt(args[1]);
 		
 		try{
-			server = new ServerService(role);
+			server = new ServerService(port, role);
 			
 			Registry reg = LocateRegistry.createRegistry(port);
 			

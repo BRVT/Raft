@@ -14,11 +14,18 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 	
 	private Server server;
 	
-	public ServerService(int role) throws RemoteException {
-		server = new Server(role);
+	public ServerService(int port, int role) throws RemoteException {
+		server = new Server(port,role);
 	}
 	
 	public String request(String s, int id) throws RemoteException{
 		return server.request(s, id);
+	}
+
+	@Override
+	public boolean AppendEntriesRPC(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry,
+			int leaderCommit) throws RemoteException {
+		
+		return server.receiveAppendEntry(term,leaderID, prevLogIndex, prevLogTerm, entry, leaderCommit);
 	}
 }
