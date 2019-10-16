@@ -15,9 +15,12 @@ public class LogEntry {
 	private File f;
 	private File dir;
 	
-	private int prevLogTerm;
+	private int leaderID;
 	private int prevLogIndex;
+	private int prevLogTerm;
 	private int commitIndex;
+	
+	private Entry lastEntry;
 	
 	private Map<String,Entry> entries;
 	
@@ -26,6 +29,7 @@ public class LogEntry {
 		this.entries = new HashMap<>();
 		this.prevLogIndex = 0;
 		this.commitIndex = 0;
+		this.lastEntry = null;
 	}
 	
 	public void createFile(int port) {
@@ -91,16 +95,16 @@ public class LogEntry {
 			
 		}else {
 		
-		Entry entry =  new Entry(prevLogIndex,command,term,commited,id_command);
+		lastEntry =  new Entry(prevLogIndex,command,term,commited,id_command);
 
-		entries.put(id_command,entry);
+		entries.put(id_command,lastEntry);
 		prevLogIndex ++;
 
 
 		try {
 
 			BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
-			writer.write(entry.toString());
+			writer.write(lastEntry.toString());
 			writer.newLine();
 			writer.close();
 			
@@ -120,19 +124,23 @@ public class LogEntry {
 		private String command;
 		private int term;
 		private boolean commited;
-		private String id_command;
-
+		private String clientIDCommand;
+		
+		
 		public Entry(int index, String command, int term, boolean commited, String id_command) {
 			this.index = index;
 			this.command = command;
 			this.term = term;
 			this.commited = commited;
-			this.id_command = id_command;
+			this.clientIDCommand = id_command;
 		}
+
+		
+		
 
 		public String toString() {
 			return (String.valueOf(index)+":"+command+":"+String.valueOf(term)+":"+
-					Boolean.toString(commited)+":"+String.valueOf(id_command)+"\n");
+					Boolean.toString(commited)+":"+String.valueOf(clientIDCommand)+"\n");
 		}
 
 		public static Entry setEntry(String s) {
@@ -149,7 +157,7 @@ public class LogEntry {
 	}
 
 
-	public void commitEntry(String s) {
+	public void commitEntry() {
 	
 		
 	}
@@ -176,6 +184,10 @@ public class LogEntry {
 
 	public void setCommitIndex(int commitIndex) {
 		this.commitIndex = commitIndex;
+	}
+
+	public Entry getLastEntry() {
+		return lastEntry;
 	}
 	
 }
