@@ -61,9 +61,6 @@ public class Server implements IServer {
         }
     }
     
-    
-    
-    
 	@Override
 	public String request(String s, int id) throws RemoteException {
 		if(this.isLeader()) {
