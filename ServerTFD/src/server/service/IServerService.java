@@ -9,4 +9,6 @@ public interface IServerService extends Remote {
 
 	public boolean AppendEntriesRPC(int term, int leaderID, int prevLogIndex, int prevLogTerm,
 			String entry, int leaderCommit) throws RemoteException;
+
+	public int getPrevLogIndex() throws RemoteException;
 }

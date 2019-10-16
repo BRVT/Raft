@@ -49,29 +49,16 @@ public class SimpleClient {
 				System.out.println("Insira String: ");
 				
 				id++;
-				
-				
 				request = s.nextLine();
 			}
 			s.close();
 		}catch (Exception e) {
-
-			System.err.print(e.getMessage());
-
+			System.err.print("Morreu" + e.getMessage());
 		}
-
-
 	}
-
-
 
 	public static IServerService locateAux(int port, String name) throws RemoteException, NotBoundException {
-
 		Registry reg = LocateRegistry.getRegistry(port);
-
 		return (IServerService) reg.lookup(name);
-
 	}
-
-
 }

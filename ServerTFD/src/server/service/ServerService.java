@@ -28,4 +28,10 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 		
 		return server.receiveAppendEntry(term,leaderID, prevLogIndex, prevLogTerm, entry, leaderCommit);
 	}
+
+	@Override
+	public int getPrevLogIndex() throws RemoteException {
+		
+		return server.getPrevLogIndex();
+	}
 }

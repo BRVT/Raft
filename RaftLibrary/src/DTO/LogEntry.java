@@ -10,24 +10,27 @@ public class LogEntry {
 	// - id do client
 	// - termo do server
 	// - 
+	private static final String BAR = System.getProperty("file.separator");
+	
 	private File f;
 	private File dir;
 	
-	private int index;
-	private int index_last_comitted;
+	private int prevLogTerm;
+	private int prevLogIndex;
+	private int commitIndex;
 	
 	private Map<String,Entry> entries;
-	private String bar;
+	
 	
 	public LogEntry() {
 		this.entries = new HashMap<>();
-		this.index = 0;
-		this.index_last_comitted = 0;
-		this.bar = System.getProperty("file.separator");
+		this.prevLogIndex = 0;
+		this.commitIndex = 0;
 	}
+	
 	public void createFile(int port) {
-		String dire = "src" + bar +"server" +bar +"file_server_"+String.valueOf(port);
-		String file = dire + bar + "log_" + String.valueOf(port)+".txt";
+		String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
+		String file = dire + BAR + "log_" + String.valueOf(port)+".txt";
 		// Use relative path for Unix systems
 
 		System.out.println(file);
@@ -68,10 +71,10 @@ public class LogEntry {
 				entries.put(st.split(":")[4], e);
 				
 				if(e.isComitted()) {
-					this.index_last_comitted ++;
+					this.commitIndex ++;
 				}
 				
-				index ++;
+				prevLogIndex ++;
 			}
 		} catch (NumberFormatException | IOException e) {
 			// TODO Auto-generated catch block
@@ -88,11 +91,10 @@ public class LogEntry {
 			
 		}else {
 		
-		
-		Entry entry =  new Entry(index,command,term,commited,id_command);
+		Entry entry =  new Entry(prevLogIndex,command,term,commited,id_command);
 
 		entries.put(id_command,entry);
-		index ++;
+		prevLogIndex ++;
 
 
 		try {
@@ -150,6 +152,30 @@ public class LogEntry {
 	public void commitEntry(String s) {
 	
 		
+	}
+	
+	public int getPrevLogTerm() {
+		return prevLogTerm;
+	}
+
+	public void setPrevLogTerm(int prevLogTerm) {
+		this.prevLogTerm = prevLogTerm;
+	}
+
+	public int getPrevLogIndex() {
+		return prevLogIndex;
+	}
+
+	public void setPrevLogIndex(int prevLogIndex) {
+		this.prevLogIndex = prevLogIndex;
+	}
+
+	public int getCommitIndex() {
+		return commitIndex;
+	}
+
+	public void setCommitIndex(int commitIndex) {
+		this.commitIndex = commitIndex;
 	}
 	
 }
