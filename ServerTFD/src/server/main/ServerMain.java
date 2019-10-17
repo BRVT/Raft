@@ -35,6 +35,8 @@ public class ServerMain {
 			
 			System.out.println("Server estah a escutar no porto " + args[0]);
 			
+			server.run();
+			
 		}catch(Exception e){
 			System.err.println(e.getMessage());
 		

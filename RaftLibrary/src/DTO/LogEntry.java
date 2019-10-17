@@ -2,7 +2,6 @@ package DTO;
 
 import java.io.*;
 import java.util.*;
-
 public class LogEntry {
 
 	//Definir o que cada LogEntry vai ter
@@ -22,13 +21,13 @@ public class LogEntry {
 	
 	private Entry lastEntry;
 	
-	private Map<String,Entry> entries;
-	
+	private ArrayList<Entry> entries;
+
 	
 	public LogEntry() {
-		this.entries = new HashMap<>();
+		this.entries = new ArrayList<>();
 		this.prevLogIndex = 0;
-		this.commitIndex = 0;
+		this.commitIndex = -1;
 		this.lastEntry = null;
 	}
 	
@@ -59,31 +58,41 @@ public class LogEntry {
 
 	private void loadEntries() {
 
-
-		BufferedReader br = null;
+		FileInputStream fis;
 		try {
-			br = new BufferedReader(new FileReader(f));
-		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} 
+			fis = new FileInputStream(f);
+			BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+		
+//		try {
+			
+			
+//		} catch (FileNotFoundException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		} 
 
 		String st = ""; 
-		try {
+	
+			
+		
 			while ((st = br.readLine()) != null) {
+				System.out.println("st -> " + st);
 				Entry e = Entry.setEntry(st);
-				entries.put(st.split(":")[4], e);
+				entries.add(e);
 				
 				if(e.isComitted()) {
 					this.commitIndex ++;
 				}
 				
 				prevLogIndex ++;
+				
 			}
+			br.close();
 		} catch (NumberFormatException | IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		} 
+		
 
 
 	}
@@ -91,13 +100,16 @@ public class LogEntry {
 	
 	public boolean writeLog(String command, int term, boolean commited, String id_command) {
 
-		if(entries.get(id_command) != null) {
-			
+		Entry aux = new Entry(prevLogIndex,command,term,commited,id_command);
+		if(entries.contains(aux)) {
+			return false;
 		}else {
 		
-		lastEntry =  new Entry(prevLogIndex,command,term,commited,id_command);
-
-		entries.put(id_command,lastEntry);
+		lastEntry =  aux;
+		synchronized (entries) {
+			entries.add(lastEntry);
+		}
+		
 		prevLogIndex ++;
 
 
@@ -115,7 +127,7 @@ public class LogEntry {
 		}
 
 		}
-		return false;
+		
 	}
 	
 	
@@ -140,7 +152,7 @@ public class LogEntry {
 
 		public String toString() {
 			return (String.valueOf(index)+":"+command+":"+String.valueOf(term)+":"+
-					Boolean.toString(commited)+":"+String.valueOf(clientIDCommand)+"\n");
+					Boolean.toString(commited)+":"+String.valueOf(clientIDCommand));
 		}
 
 		public static Entry setEntry(String s) {
@@ -154,12 +166,58 @@ public class LogEntry {
 			return commited;
 		}
 
+		public String getClientIDCommand() {
+			return clientIDCommand;
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Entry other = (Entry) obj;
+			if (clientIDCommand == null) {
+				if (other.clientIDCommand != null)
+					return false;
+			} else if (!clientIDCommand.equals(other.clientIDCommand))
+				return false;
+			if (command == null) {
+				if (other.command != null)
+					return false;
+			} else if (!command.equals(other.command))
+				return false;
+			if (commited != other.commited)
+				return false;
+			if (index != other.index)
+				return false;
+			if (term != other.term)
+				return false;
+			return true;
+		}
+
+
+
+
+		public void setCommitted() {
+			this.commited = true;
+	
+			// temos que ir ao log mudar isto pah!!!!!!
+		}
+		
 	}
 
 
 	public void commitEntry() {
-	
 		
+//		for (Entry entry : entries) {
+//			
+//		}
+		
+		commitIndex ++;
+		
+		System.out.println("ESTA COMITADO");
 	}
 	
 	public int getPrevLogTerm() {
@@ -188,6 +246,29 @@ public class LogEntry {
 
 	public Entry getLastEntry() {
 		return lastEntry;
+	}
+
+	public ArrayList<Entry> getLastEntriesSince(Entry e) {
+		
+		ArrayList <Entry> array = new ArrayList<>();
+		int flag = 0;
+		if(e == null) {
+			flag = 1;
+		}
+		for(Entry entry : entries) {
+			System.out.println("ENTRY ------- > " + entry.toString());
+			
+			if(flag == 1) {
+				System.out.println("if da flag"+entry.getClientIDCommand());
+				array.add(entry);
+			}
+			
+			if((entry.equals(e))&& flag != 1) {
+				System.out.println("if do equals "+entry.getClientIDCommand());
+				flag = 1;
+			}
+		}
+		return array;
 	}
 	
 }

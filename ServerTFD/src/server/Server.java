@@ -73,6 +73,10 @@ public class Server implements IServer {
 		//addRegistries();
 		//------------------------------------------------------------------
 
+		
+	}
+	
+	public void run() {
 		if(state.equals(STATE.LEADER)) {
 			leaderWork();
 
@@ -81,7 +85,9 @@ public class Server implements IServer {
 			timer = new Timer();
 			timer.schedule(new RemindTask(), 1000);
 		}
+		
 	}
+	
 	public void leaderWork() {
 
 		CountDownLatch latch = new CountDownLatch(2); 
@@ -116,6 +122,8 @@ public class Server implements IServer {
 						if(i == 0) count ++;
 					}
 					if(count >= 2) log.commitEntry();
+					
+					answers = new HashMap<>();
 				}
 			}
 
@@ -177,25 +185,37 @@ public class Server implements IServer {
 					}
 
 					Thread.sleep(1000);
+					
 					Entry e = log.getLastEntry();
+					
 					
 					if( e == (null) || e.equals(lastEntry) ){
 						verify = sendHeartBeat(iServer, null);
 					}else {
-						verify = sendHeartBeat(iServer, e.toString());
+						System.out.println("Veio entry " + e.toString());
+						ArrayList <Entry> array = log.getLastEntriesSince(lastEntry);
+						for (Entry entry : array) {
+							System.out.println("for each da thread " + entry.toString());
+							verify = sendHeartBeat(iServer, entry.toString());
+						}
+						
 						
 						synchronized(answers) {
 							answers.put(portF, verify);
 							nAnswers ++;
-						}
-						if(nAnswers < 4) {
-							this.wait(5000);
-							nAnswers = 0;
-						}else {
-							nAnswers = 0;
-							this.notifyAll();
+							
+							if(nAnswers < 4) {
+								
+								answers.wait(5000);
+								nAnswers = 0;
+							}else {
+								nAnswers = 0;
+								answers.notifyAll();
 
+							}
 						}
+						this.lastEntry = e;
+						
 					}
 
 
@@ -212,7 +232,7 @@ public class Server implements IServer {
 
 		public void connect() {
 			try {
-				System.out.println("ENTROU CRL " + this.portF);
+				
 				r = LocateRegistry.getRegistry(portF);
 				iServer =  (IServerService) r.lookup(ADDRESS);
 				verify = 0;
@@ -239,7 +259,7 @@ public class Server implements IServer {
 	 */
 	class RemindTask extends TimerTask {
 		public void run() {
-			System.out.println("Time's up!");
+			
 			timer.cancel(); 
 
 			//time out --> eleicao
@@ -290,6 +310,7 @@ public class Server implements IServer {
 	 * Faz reset a um timer (?) - devia ser static e receber um timer?
 	 */
 	public void resetTimer() {
+		
 		timer.cancel(); 
 		timer = new Timer();
 		timer.schedule(new RemindTask(), 5*100);
@@ -303,6 +324,7 @@ public class Server implements IServer {
 	public String request(String s, int id) throws RemoteException {
 		if(this.isLeader()) {
 			synchronized(s){
+				System.out.println("Request " + s);
 				log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
 			}
 
@@ -442,7 +464,9 @@ public class Server implements IServer {
 		if(entry == null) 
 			resetTimer();
 		else {
-			return log.writeLog(entry.split("_")[1] , this.term, false, entry.split("_")[0] ) ;
+			System.out.println("receiveAPPPENDE : " +entry);
+			System.out.println(this.port);
+			return log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ;
 		}
 		return true;
 
@@ -452,4 +476,5 @@ public class Server implements IServer {
 
 		return log.getPrevLogIndex();
 	}
+	
 }

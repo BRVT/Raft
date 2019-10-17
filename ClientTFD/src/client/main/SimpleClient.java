@@ -31,6 +31,13 @@ public class SimpleClient {
 			System.out.println("Insira String: ");
 			String request = s.nextLine();
 			int id = 0;
+//			String enviar = args[0];
+//			
+//			for (int i = 0; i < 5; i++) {
+//				System.out.println(simple.request( uniqueID+"|"+id + "_" +args[0]+String.valueOf(i), i));
+//			}
+//			
+			
 			while(!request.equals("quit")) {
 				String teste = uniqueID+"|"+id + "_" +request;
 				
