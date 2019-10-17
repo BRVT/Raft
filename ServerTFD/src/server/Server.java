@@ -380,7 +380,7 @@ public class Server implements IServer {
 	 * 0 = correu tudo bem
 	 * 1 = ta off
 	 * 2 =  term < currentTerm
-	 * 3 = log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm
+	 * 3 = log doesnÂ’t contain an entry at prevLogIndex whose term matches prevLogTerm
 	 * @return
 	 */
 	public int sendHeartBeat(IServerService server, String entry) {
@@ -427,7 +427,7 @@ public class Server implements IServer {
 //	}
 
 	/**
-	 * Para cada porto, vai guardar as registries e stubs ativas, para mais tarde comunicar através de JavaRMI
+	 * Para cada porto, vai guardar as registries e stubs ativas, para mais tarde comunicar atravÃ©s de JavaRMI
 	 */
 	private void addRegistries() {
 
@@ -466,6 +466,7 @@ public class Server implements IServer {
 		else {
 			System.out.println("receiveAPPPENDE : " +entry);
 			System.out.println(this.port);
+			this.leader = leaderID;
 			return log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ;
 		}
 		return true;
