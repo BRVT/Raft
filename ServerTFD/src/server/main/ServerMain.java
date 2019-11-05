@@ -1,6 +1,5 @@
 package server.main;
 
-import java.rmi.Naming;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
@@ -22,16 +21,15 @@ public class ServerMain {
 //			Constants.PORTS_FOR_SERVER_REGISTRIES.iterator().forEachRemaining(p -> System.out.println(p));
 //		}
 		
-		int role = Integer.parseInt(args[1]);
 		
 		try{
-			server = new ServerService(port, role);
+			server = new ServerService(port);
+			
+			System.out.println("Vai criar registry");
 			
 			Registry reg = LocateRegistry.createRegistry(port);
 			
 			reg.rebind(Constants.ADDRESS, server);
-			
-			System.out.println("Vai criar registry");
 			
 			System.out.println("Server estah a escutar no porto " + args[0]);
 			
@@ -44,10 +42,10 @@ public class ServerMain {
 	
 	}
 
-	private static boolean checkPortValue(int port) {
-		
-		return Constants.PORTS_FOR_SERVER_REGISTRIES.contains(port);
-		
-	}
+//	private static boolean checkPortValue(int port) {
+//		
+//		return Constants.PORTS_FOR_SERVER_REGISTRIES.contains(port);
+//		
+//	}
 	
 }

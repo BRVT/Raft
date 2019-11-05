@@ -39,11 +39,11 @@ public class Server implements IServer {
 
 	private int nAnswers;
 
-	public Server(int port, int role){
+	public Server(int port){
 
 		this.port = port;
 		this.term = 0;
-		this.state = STATE.values()[role];
+		this.state = STATE.FOLLOWER;
 
 		log.createFile(this.port);
 	}
@@ -54,12 +54,16 @@ public class Server implements IServer {
 
 		}
 		else if(state.equals(STATE.FOLLOWER)){
+			Random r = new Random();
+			int i = r.nextInt(4) + 2;
+			
 			timer = new Timer();
-			timer.schedule(new RemindTask(), 1000);
+			timer.schedule(new RemindTask(), i*1000);
 		}
 
 	}
 
+	@SuppressWarnings("unused")
 	public void leaderWork() {
 
 		CountDownLatch latch = new CountDownLatch(2); 
@@ -177,11 +181,42 @@ public class Server implements IServer {
 
 
 	/**
-	 * Para o follower verificar se o leader morreu ou nao
+	 * Para o follower verificar se o leader morreu ou nao, e comecar eleicao
 	 */
 	class RemindTask extends TimerTask {
 		public void run() {
-
+			timer.cancel();
+			
+			
+			
+			//increases term -> this.term++;
+			//changes state -> state = STATE.CANDIDATE;
+			//changes votedFor -> votedFor = this.id;
+			//starts election timer
+			//sends RequestVoteRPC -> RequestVoteRPC(this.term, this.id, this.lasLogIndex, this.lastLogTerm)
+			//waits responses
+			
+			//CASO 1
+			//if #responses > 2
+				//changes state -> state = STATE.LEADER
+				//sends heartbeats -> leaderwork();
+			
+			//CASO 2
+			//receives AppendEntriesRPC from another server
+			//if leader.term > this.term
+				//changes state -> state = STATE.FOLLOWER;
+			//else
+				//continues candidate
+				//????????????????????????????
+			
+			//CASO 3
+			//election timer ends (F)
+			//timeout random~
+				//timer = new Timer();
+				//Random r = new Random();
+				//timer.schedule(new RemindTask(), (r.nextInt(3) + 2) * 1000);
+			
+			
 			//time out --> eleicao
 
 			timer = new Timer();

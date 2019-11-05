@@ -10,27 +10,27 @@ public class LogEntry {
 	// - termo do server
 	// - 
 	private static final String BAR = System.getProperty("file.separator");
-	
+
 	private File f;
 	private File dir;
-	
+
 	private int leaderID;
 	private int prevLogIndex;
 	private int prevLogTerm;
 	private int commitIndex;
-	
+
 	private Entry lastEntry;
-	
+
 	private ArrayList<Entry> entries;
 
-	
+
 	public LogEntry() {
 		this.entries = new ArrayList<>();
 		this.prevLogIndex = 0;
 		this.commitIndex = -1;
 		this.lastEntry = null;
 	}
-	
+
 	public void createFile(int port) {
 		String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
 		String file = dire + BAR + "log_" + String.valueOf(port)+".txt";
@@ -40,7 +40,7 @@ public class LogEntry {
 		this.dir = new File(dire);
 		this.f = new File(file);
 		if(!dir.exists()) {
-			
+
 			dir.mkdir();
 
 
@@ -48,7 +48,7 @@ public class LogEntry {
 			try {
 				f.createNewFile();
 			} catch (IOException e) {
-				
+
 				e.printStackTrace();
 			}
 		}else {
@@ -63,75 +63,64 @@ public class LogEntry {
 			fis = new FileInputStream(f);
 			BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 
+			String st = ""; 
 
-		String st = ""; 
-	
-			
-		
 			while ((st = br.readLine()) != null) {
-
 				Entry e = Entry.setEntry(st);
 				entries.add(e);
-				
 				if(e.isComitted()) {
 					this.commitIndex ++;
 				}
-				
 				prevLogIndex ++;
-				
+
 			}
 			br.close();
 		} catch (NumberFormatException | IOException e) {
 
 			e.printStackTrace();
 		} 
-		
-
-
 	}
-	
-	
+
+
 	public boolean writeLog(String command, int term, boolean commited, String id_command) {
 
 		Entry aux = new Entry(prevLogIndex,command,term,commited,id_command);
 		if(entries.contains(aux)) {
 			return false;
 		}else {
-		
-		lastEntry =  aux;
-		synchronized (entries) {
-			entries.add(lastEntry);
-		}
-		
-		prevLogIndex ++;
-
-
-		try {
-
-			BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
-			writer.write(lastEntry.toString());
-			writer.newLine();
-			writer.close();
+			lastEntry =  aux;
 			
-			return true;
+			synchronized (entries) {
+				entries.add(lastEntry);
+			}
+
+			prevLogIndex ++;
 			
-		} catch (IOException e) {
-			return false;
-		}
+			try {
+				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
+				writer.write(lastEntry.toString());
+				writer.newLine();
+				writer.close();
+
+				return true;
+
+			} catch (IOException e) {
+				return false;
+			}
 
 		}
-		
+
 	}
-	
-	
+
+
 	public static class Entry{
 		private int index;
 		private String command;
 		private int term;
 		private boolean commited;
 		private String clientIDCommand;
-		
-		
+
+
 		public Entry(int index, String command, int term, boolean commited, String id_command) {
 			this.index = index;
 			this.command = command;
@@ -140,8 +129,8 @@ public class LogEntry {
 			this.clientIDCommand = id_command;
 		}
 
-		
-		
+
+
 
 		public String toString() {
 			return (String.valueOf(index)+":"+command+":"+String.valueOf(term)+":"+
@@ -154,7 +143,7 @@ public class LogEntry {
 			return new Entry(Integer.parseInt(array[0]),array[1],Integer.parseInt(array[2]),Boolean.valueOf(array[3]),
 					(array[4]));
 		}
-		
+
 		public boolean isComitted() {
 			return commited;
 		}
@@ -195,21 +184,20 @@ public class LogEntry {
 
 		public void setCommitted() {
 			this.commited = true;
-	
+
 			// temos que ir ao log mudar isto pah!!!!!!
 		}
-		
+
 	}
 
-
+	
 	public void commitEntry() {
-
-		
+		//TODO
 		commitIndex ++;
-		
+
 		System.out.println("ESTA COMITADO");
 	}
-	
+
 	public int getPrevLogTerm() {
 		return prevLogTerm;
 	}
@@ -239,14 +227,14 @@ public class LogEntry {
 	}
 
 	public ArrayList<Entry> getLastEntriesSince(Entry e) {
-		
+
 		ArrayList <Entry> array = new ArrayList<>();
 		int flag = 0;
 		if(e == null) {
 			flag = 1;
 		}
 		for(Entry entry : entries) {
-			
+
 			if(flag == 1) {
 				array.add(entry);
 			}
@@ -256,5 +244,5 @@ public class LogEntry {
 		}
 		return array;
 	}
-	
+
 }
