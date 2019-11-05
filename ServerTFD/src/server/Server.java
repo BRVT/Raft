@@ -16,12 +16,11 @@ import server.service.IServerService;
 
 public class Server implements IServer {
 	
-
 	private int port;
-	private int leader;
-
+	private int leaderPort;
 	private STATE state;
 	private int term;
+	private int votedFor;
 
 	private Timer timer;
 
@@ -29,7 +28,6 @@ public class Server implements IServer {
 	private LogEntry log = new LogEntry();
 	private Map<Integer, Integer> answers = new HashMap<>();
 
-	 
 	private FollowerCommunication first;
 	private FollowerCommunication second;
 	private FollowerCommunication third;
@@ -48,6 +46,9 @@ public class Server implements IServer {
 		log.createFile(this.port);
 	}
 
+	/**
+	 * Inicializa o server ---REVER---
+	 */
 	public void run() {
 		if(state.equals(STATE.LEADER)) {
 			leaderWork();
@@ -58,11 +59,17 @@ public class Server implements IServer {
 			int i = r.nextInt(4) + 2;
 			
 			timer = new Timer();
-			timer.schedule(new RemindTask(), i*1000);
+			timer.schedule(new RemindTask(this), i*1000);
+			
+			//como eh que o RemindTask vai saber e atualizar os atributos? passamos o this no construtor?
+			//
 		}
 
 	}
-
+	
+	/**
+	 * Funcao que contem o bulk do trabalho realizado pelo Leader
+	 */
 	@SuppressWarnings("unused")
 	public void leaderWork() {
 
@@ -104,8 +111,145 @@ public class Server implements IServer {
 		}
 	}
 
+	/**
+	 * Faz reset a um timer (?) - devia ser static e receber um timer?
+	 */
+	public void resetTimer() {
 
+		timer = new Timer();
+		timer.schedule(new RemindTask(this), 5*100);
+	}
+	
+	public void voteFor(int id) {
+		this.votedFor = id;
+	}
+	
+	public void cleanVote() {
+		this.votedFor = 0;
+	}
+	
+	public void changeState(STATE state) {
+		
+		this.state = state;
+	}
+	
+	public void increaseTerm() {
+		this.term ++;
+	}
 
+	public int getPrevLogIndex() {
+		return log.getPrevLogIndex();
+	}
+	
+	public int getPort() {
+		return this.port;
+	}
+	
+	public int getLeaderPort() {
+		return leaderPort;
+	}
+
+	public STATE getState() {
+		return state;
+	}
+
+	public int getTerm() {
+		return term;
+	}
+
+	public int getVotedFor() {
+		return votedFor;
+	}
+	
+	public boolean isLeader() {
+		return this.state.equals(STATE.LEADER);
+	}
+	
+	/**
+	 * Funcao partilhada pelo ClientRMI, permite troca de mensagens com o client
+	 * e o retorno de respostas.
+	 * @return String de resposta, se for o leader, ou o porto do leader, se for um follower
+	 */
+	public String request(String s, int id) throws RemoteException {
+		if(this.isLeader()) {
+			synchronized(s){
+				log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
+			}
+			this.pendentEntry.add(s);
+			return s.split("_")[1] ;
+		}
+		else {
+			//devolve porto do leader
+			return "& " + String.valueOf(leaderPort);
+		}
+
+	}
+
+	/**
+	 * Hearbeat enviado pelo leader. Envia AppendEntries vazio, se nao houver requests para enviar.
+	 * 0 = correu tudo bem
+	 * 1 = ta off
+	 * 2 =  term < currentTerm
+	 * 3 = log doesnt contain an entry at prevLogIndex whose term matches prevLogTerm
+	 * @param server - stub do follower
+	 * @param entry - entry a ser enviada
+	 * @param election - 0 para enviar AppendEntriesRPC, 1 para enviar RequestVoteRPC
+	 * @return
+	 */
+	public int sendHeartBeat(IServerService server, String entry, int election) {
+		try {
+			if(election == 0) {
+				server.AppendEntriesRPC(term, getPort(), log.getPrevLogIndex(),
+						log.getPrevLogTerm(), entry, log.getCommitIndex());
+			}else if(election == 1) {
+				server.RequestVoteRPC(getTerm(), getPort(), log.getPrevLogIndex(), log.getPrevLogTerm());
+			}
+			
+		} catch (RemoteException e1) {
+			return 1;
+		}
+		return 0;
+
+	}
+  
+
+	/**
+	 * Recebe AppendEntriesRPC do Leader
+	 * @param term - termo do Leader
+	 * @param leaderID - id do Leader (porto)
+	 * @param prevLogIndex - prevLogIndex do Leader
+	 * @param prevLogTerm - prevLogTerm do Leader
+	 * @param entry - entry do Leader
+	 * @param leaderCommit - ultimo commit do Leader
+	 * @return true se tudo correu bem || false se ocorreu uma falha
+	 */
+	public boolean receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry, int leaderCommit) {
+		this.leaderPort = leaderID;
+		if(entry == null) 
+			resetTimer();
+		else {
+			System.out.println(this.port);
+			return log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ;
+		}
+		return true;
+	}
+	
+	/**
+	 * Recebe RequestVoteRPC de um Candidate
+	 * @param term - termo do candidato
+	 * @param id - id do candidato (porto)
+	 * @param prevLogIndex - prevLogIndex do candidato
+	 * @param prevLogTerm - prevLogTerm do candidato
+	 * @return true se concorda com nova leadership, false se nao concorda
+	 */
+	public boolean receiveRequestVote(int term, int id, int prevLogIndex, int prevLogTerm) {
+		//ler paper para saber o que fazer aqui
+		return true;
+	}
+	
+	/**
+	 * Para o leader comunicar com os followers
+	 */
 	class FollowerCommunication extends Thread{ 
 		//dealy que vai ser para retentar comunicao
 		private int delay; 
@@ -138,15 +282,18 @@ public class Server implements IServer {
 
 
 					if( e == (null) || e.equals(lastEntry) ){
-						verify = sendHeartBeat(iServer, null);
+						verify = sendHeartBeat(iServer, null, 0);
 					}else {
 						System.out.println("Veio entry " + e.toString());
 						ArrayList <Entry> array = log.getLastEntriesSince(lastEntry);
 						for (Entry entry : array) {
 							System.out.println("for each da thread " + entry.toString());
-							verify = sendHeartBeat(iServer, entry.toString());
+							verify = sendHeartBeat(iServer, entry.toString(), 0);
 						}
-
+						
+						//Verificar isto!
+						//O verify nao verifica todas as entries enviadas
+						//Ex: a Entry 1 da verify 1 (erro) e a entry 2 dah fixe, logo dah commit ah 1 na mesma?
 						synchronized(answers) {
 							answers.put(portF, verify);
 							nAnswers ++;
@@ -179,30 +326,54 @@ public class Server implements IServer {
 		}
 	} 
 
-
 	/**
 	 * Para o follower verificar se o leader morreu ou nao, e comecar eleicao
 	 */
 	class RemindTask extends TimerTask {
+		
+		private Server server;
+		private ArrayList<Integer> trueResponses = new ArrayList<>();
+		
+		public RemindTask(Server server) {
+			this.server = server;
+		}
+
 		public void run() {
 			timer.cancel();
 			
-			
-			
 			//increases term -> this.term++;
+			server.increaseTerm();
+			
 			//changes state -> state = STATE.CANDIDATE;
+			server.changeState(STATE.CANDIDATE);
+			
 			//changes votedFor -> votedFor = this.id;
+			server.voteFor(server.getPort());
+			
 			//starts election timer
+			//Timer dentro de timer?? Metemos o CASO 3 noutro timer?
+			
 			//sends RequestVoteRPC -> RequestVoteRPC(this.term, this.id, this.lasLogIndex, this.lastLogTerm)
+			//thread para isto??
+			
 			//waits responses
+			//copiar o synchronized do FollowerCommunication
+			
+			//count das responses true
 			
 			//CASO 1
 			//if #responses > 2
+			if(trueResponses.size() > Constants.MAJORITY) {
 				//changes state -> state = STATE.LEADER
+				server.changeState(STATE.LEADER);
 				//sends heartbeats -> leaderwork();
-			
+				server.leaderWork();
+			}
+				
 			//CASO 2
 			//receives AppendEntriesRPC from another server
+			//How to check this??
+			
 			//if leader.term > this.term
 				//changes state -> state = STATE.FOLLOWER;
 			//else
@@ -220,110 +391,10 @@ public class Server implements IServer {
 			//time out --> eleicao
 
 			timer = new Timer();
-			timer.schedule(new RemindTask(), 5*100);
+			timer.schedule(new RemindTask(server), 5*100);
 		}
 
 	}
 
-
-
-	/**
-	 * Faz reset a um timer (?) - devia ser static e receber um timer?
-	 */
-	public void resetTimer() {
-
-		timer = new Timer();
-		timer.schedule(new RemindTask(), 5*100);
-	}
-
-	/**
-	 * Funcao partilhada pelo ClientRMI, permite troca de mensagens com o client
-	 * e o retorno de respostas.
-	 * @return String de resposta, se for o leader, ou o porto do leader, se for um follower
-	 */
-	public String request(String s, int id) throws RemoteException {
-		if(this.isLeader()) {
-			synchronized(s){
-				log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
-			}
-			this.pendentEntry.add(s);
-			return s.split("_")[1] ;
-		}
-		else {
-			//devolve porto do leader
-			return "& " + String.valueOf(leader);
-		}
-
-	}
-
-	/**
-	 * Getter do porto
-	 * @return porto do server 
-	 */
-	public int getPort() {
-		return this.port;
-	}
-
-	/**
-	 * Verificador de leadership
-	 * @return true - eh leader false - cc
-	 */
-	public boolean isLeader() {
-		return this.state.equals(STATE.LEADER);
-
-	}
-
-	/**
-	 * Dah increase ao term do server, apenas usado em eleicoes
-	 */
-	public void increaseTerm() {
-		this.term ++;
-	}
-
-	/**
-	 * flag = 0 -> envia vazio | 1-> envia cenas
-	 * Hearbeat enviado pelo leader. Envia AppendEntries vazio, se nao houver requests para enviar.
-	 * 0 = correu tudo bem
-	 * 1 = ta off
-	 * 2 =  term < currentTerm
-	 * 3 = log doesnt contain an entry at prevLogIndex whose term matches prevLogTerm
-	 * @return
-	 */
-	public int sendHeartBeat(IServerService server, String entry) {
-		try {
-			server.AppendEntriesRPC(term, getPort(), log.getPrevLogIndex(),
-					log.getPrevLogTerm(), entry, log.getCommitIndex());
-		} catch (RemoteException e1) {
-			return 1;
-		}
-		return 0;
-
-	}
-  
-	/**
-	 * 
-	 * @param term
-	 * @param leaderID
-	 * @param prevLogIndex
-	 * @param prevLogTerm
-	 * @param entry
-	 * @param leaderCommit
-	 * @return
-	 */
-	public boolean receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm,
-			String entry, int leaderCommit) {
-		this.leader = leaderID;
-		if(entry == null) 
-			resetTimer();
-		else {
-			System.out.println(this.port);
-			return log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ;
-		}
-		return true;
-	}
-
-	public int getPrevLogIndex() {
-		return log.getPrevLogIndex();
-	}
 
 }

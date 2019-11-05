@@ -11,4 +11,6 @@ public interface IServerService extends Remote {
 			String entry, int leaderCommit) throws RemoteException;
 
 	public int getPrevLogIndex() throws RemoteException;
+
+	public boolean RequestVoteRPC(int term, int port, int prevLogIndex, int prevLogTerm) throws RemoteException;
 }
