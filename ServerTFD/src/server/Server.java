@@ -1,6 +1,6 @@
 package server;
 
-import java.lang.reflect.Array;
+
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -12,12 +12,11 @@ import DTO.LogEntry;
 import DTO.LogEntry.Entry;
 import enums.STATE;
 import server.constants.Constants;
-import server.domain.Entrada;
 import server.service.IServerService;
 
 public class Server implements IServer {
 	private static final String ADDRESS = "rmi://localhost/server";
-	private static final int N_SERVERS = 4;
+
 
 	private int port;
 	private int leader;
@@ -26,20 +25,15 @@ public class Server implements IServer {
 	private int term;
 
 	private Timer timer;
-	private Timer heartbeat;
-	private Timer timer_state;
 
-	private boolean pendentEntries;
+
+
 	private ArrayList<String> pendentEntry;
 
 	private LogEntry log;
 
-	private ArrayList<Integer> nextIndex;
-	private ArrayList<Integer> matchIndex;
 
-	private Map<IServerService, Integer> servers;
 
-	private ArrayList<Integer> servers_state_off;
 
 	private FollowerCommunication first;
 	private FollowerCommunication second;
@@ -56,11 +50,8 @@ public class Server implements IServer {
 		this.term = 0;
 		this.state = STATE.values()[role];
 
-		this.pendentEntries = false;
 		this.pendentEntry = new ArrayList<>(); 
 
-		this.servers_state_off = new ArrayList<Integer>();
-		this.servers = new HashMap<>();
 
 		this.answers =  new HashMap<>();
 		this.log = new LogEntry();
@@ -73,9 +64,9 @@ public class Server implements IServer {
 		//addRegistries();
 		//------------------------------------------------------------------
 
-		
+
 	}
-	
+
 	public void run() {
 		if(state.equals(STATE.LEADER)) {
 			leaderWork();
@@ -85,9 +76,9 @@ public class Server implements IServer {
 			timer = new Timer();
 			timer.schedule(new RemindTask(), 1000);
 		}
-		
+
 	}
-	
+
 	public void leaderWork() {
 
 		CountDownLatch latch = new CountDownLatch(2); 
@@ -113,7 +104,7 @@ public class Server implements IServer {
 		second.start();
 		third.start();
 		fourth.start();
-		
+
 		while(true) {
 			synchronized (answers) {
 				if(answers.size() >= 2){
@@ -122,31 +113,12 @@ public class Server implements IServer {
 						if(i == 0) count ++;
 					}
 					if(count >= 2) log.commitEntry();
-					
+
 					answers = new HashMap<>();
 				}
 			}
 
 		}
-		//verificar se nao eh redundante com a criacao do timer heartbeat a seguir
-		//		for (Map.Entry<IServerService, Integer> server : servers.entrySet()) {
-		//			try {
-		//				System.out.println(server.getKey().AppendEntriesRPC(0, getPort(), 0, 0, null, 0));
-		//			} catch (RemoteException e) {
-		//				System.err.println("Erro a enviar primeiro heartbeat para o porto:" + server.getValue());
-		//				continue;
-		//			}
-		//		}
-
-		//		//thread do hearbeat
-		//		heartbeat = new Timer();
-		//		heartbeat.schedule(new RemindTaskHeartBeat(),
-		//				0,        //initial delay
-		//				1000);  //subsequent rate
-
-		//		//timer para verificar state da rede
-		//		timer_state = new Timer();
-		//		timer_state.schedule(new ServerStateTask(), 10000);
 
 	}
 
@@ -185,10 +157,10 @@ public class Server implements IServer {
 					}
 
 					Thread.sleep(1000);
-					
+
 					Entry e = log.getLastEntry();
-					
-					
+
+
 					if( e == (null) || e.equals(lastEntry) ){
 						verify = sendHeartBeat(iServer, null);
 					}else {
@@ -198,14 +170,14 @@ public class Server implements IServer {
 							System.out.println("for each da thread " + entry.toString());
 							verify = sendHeartBeat(iServer, entry.toString());
 						}
-						
-						
+
+
 						synchronized(answers) {
 							answers.put(portF, verify);
 							nAnswers ++;
-							
+
 							if(nAnswers < 4) {
-								
+
 								answers.wait(5000);
 								nAnswers = 0;
 							}else {
@@ -215,10 +187,8 @@ public class Server implements IServer {
 							}
 						}
 						this.lastEntry = e;
-						
+
 					}
-
-
 
 				}
 
@@ -232,7 +202,7 @@ public class Server implements IServer {
 
 		public void connect() {
 			try {
-				
+
 				r = LocateRegistry.getRegistry(portF);
 				iServer =  (IServerService) r.lookup(ADDRESS);
 				verify = 0;
@@ -244,23 +214,13 @@ public class Server implements IServer {
 		}
 	} 
 
-	/**
-	 * Vai enviar um heartbeat, para prevenir eleicao e "manter-se vivo"
-	 */
-	//	class RemindTaskHeartBeat extends TimerTask {
-	//		public void run() {
-	//			sendHeartBeat();
-	//		}
-	//
-	//	}
 
 	/**
 	 * Para o follower verificar se o leader morreu ou nao
 	 */
 	class RemindTask extends TimerTask {
 		public void run() {
-			
-			timer.cancel(); 
+
 
 			//time out --> eleicao
 
@@ -270,48 +230,13 @@ public class Server implements IServer {
 
 	}
 
-	/**
-	 * Timer dos servers para verificar se mais alguem voltou a vida desde a ultima verificacao
-	 */
-	class ServerStateTask extends TimerTask {
-		public void run() {
-			System.out.println("Time's up!");
-			timer_state.cancel(); 
 
-			//time out --> eleicao   
-			if(servers_state_off.size() > 0) {
-				for (int i = 0; i < servers_state_off.size(); i++) {
-					if(checkRegistry(servers_state_off.get(i))) {
-						servers_state_off.remove(i);
-					}
-				}
-			}
-			timer_state = new Timer();
-			timer_state.schedule(new ServerStateTask(), 10 * 1000);
-		}
-
-		public boolean checkRegistry(int port) {
-			Registry r;
-			try {
-				r = LocateRegistry.getRegistry(port);
-
-				servers.put((IServerService) r.lookup(ADDRESS),port);
-
-			} catch (Exception e) {
-				return false;
-			} 
-
-			return true;
-		}
-
-	}
 
 	/**
 	 * Faz reset a um timer (?) - devia ser static e receber um timer?
 	 */
 	public void resetTimer() {
-		
-		timer.cancel(); 
+
 		timer = new Timer();
 		timer.schedule(new RemindTask(), 5*100);
 	}
@@ -324,7 +249,6 @@ public class Server implements IServer {
 	public String request(String s, int id) throws RemoteException {
 		if(this.isLeader()) {
 			synchronized(s){
-				System.out.println("Request " + s);
 				log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
 			}
 
@@ -334,7 +258,6 @@ public class Server implements IServer {
 		}
 		else {
 			//devolve porto do leader
-			System.out.println("Sou follower, vou enviar o porto do Leader");
 			return "& " + String.valueOf(leader);
 		}
 
@@ -365,16 +288,6 @@ public class Server implements IServer {
 	}
 
 	/**
-	 * Retorna um novo valor para um timer
-	 * @return
-	 */
-	public double newTimer() {
-		Random r = new Random();
-		double randomValue = 5.0 + (10.0 - 5.0) * r.nextDouble();
-		return randomValue;
-	}
-
-	/**
 	 * flag = 0 -> envia vazio | 1-> envia cenas
 	 * Hearbeat enviado pelo leader. Envia AppendEntries vazio, se nao houver requests para enviar.
 	 * 0 = correu tudo bem
@@ -392,62 +305,10 @@ public class Server implements IServer {
 			return 1;
 		}
 
-
-
-
 		return 0;
 
 	}
-
-	class resendLogEntries implements Runnable {
-		private IServerService follower;
-
-		public resendLogEntries(IServerService follower) {
-			this.follower = follower;
-		}
-
-		public void run() {
-			try {
-				int indexFollower = follower.getPrevLogIndex();
-
-				List<String> entriesPEnviar = pendentEntry.subList(indexFollower, log.getPrevLogIndex());
-
-				for (String string : entriesPEnviar) {
-					follower.AppendEntriesRPC(term, getPort(), indexFollower++,
-							log.getPrevLogTerm(), string, log.getCommitIndex());
-				}
-			}catch (RemoteException e) {
-				System.err.println("F");
-			}
-		}
-	}
-//	//classe para dar commit
-//	public void commitEntry(String s) {
-//		log.commitEntry(s);
-//	}
-
-	/**
-	 * Para cada porto, vai guardar as registries e stubs ativas, para mais tarde comunicar através de JavaRMI
-	 */
-	private void addRegistries() {
-
-		for (Integer port : Constants.PORTS_FOR_SERVER_REGISTRIES) {
-
-			if(port != this.port) {
-				Registry r = null;
-
-				try {
-					r = LocateRegistry.getRegistry(port);
-					servers.put((IServerService) r.lookup(ADDRESS),port);
-
-				}catch (Exception e) {
-					servers_state_off.add(port);
-					continue;
-				}
-			}
-		}
-	}
-
+  
 	/**
 	 * 
 	 * @param term
@@ -460,13 +321,11 @@ public class Server implements IServer {
 	 */
 	public boolean receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm,
 			String entry, int leaderCommit) {
-
+		this.leader = leaderID;
 		if(entry == null) 
 			resetTimer();
 		else {
-			System.out.println("receiveAPPPENDE : " +entry);
 			System.out.println(this.port);
-			this.leader = leaderID;
 			return log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ;
 		}
 		return true;
@@ -477,5 +336,5 @@ public class Server implements IServer {
 
 		return log.getPrevLogIndex();
 	}
-	
+
 }

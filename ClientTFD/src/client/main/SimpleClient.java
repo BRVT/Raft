@@ -5,6 +5,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -21,8 +22,15 @@ public class SimpleClient {
 		IServerService simple;
 
 		try {
-
-			simple = locateAux(1234, "rmi://localhost/server");
+			//escolher porto random
+			Random r = new Random();
+			
+			int index = r.nextInt(5);
+			
+			int[] ports = {1234,1235,1236,1237,1238};
+			
+			
+			simple = locateAux(ports[index], "rmi://localhost/server");
 			String uniqueID = UUID.randomUUID().toString().split("-")[0];
 
 			
@@ -49,7 +57,7 @@ public class SimpleClient {
 					
 					simple = locateAux(Integer.parseInt(array[1]), "rmi://localhost/server");
 					
-					reply = simple.request(request, id);
+					reply = simple.request(teste, id);
 				}
 				
 				System.out.println("Resposta : \n"+reply);

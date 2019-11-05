@@ -36,7 +36,7 @@ public class LogEntry {
 		String file = dire + BAR + "log_" + String.valueOf(port)+".txt";
 		// Use relative path for Unix systems
 
-		System.out.println(file);
+
 		this.dir = new File(dire);
 		this.f = new File(file);
 		if(!dir.exists()) {
@@ -48,7 +48,7 @@ public class LogEntry {
 			try {
 				f.createNewFile();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
+				
 				e.printStackTrace();
 			}
 		}else {
@@ -62,21 +62,14 @@ public class LogEntry {
 		try {
 			fis = new FileInputStream(f);
 			BufferedReader br = new BufferedReader(new InputStreamReader(fis));
-		
-//		try {
-			
-			
-//		} catch (FileNotFoundException e1) {
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		} 
+
 
 		String st = ""; 
 	
 			
 		
 			while ((st = br.readLine()) != null) {
-				System.out.println("st -> " + st);
+
 				Entry e = Entry.setEntry(st);
 				entries.add(e);
 				
@@ -89,7 +82,7 @@ public class LogEntry {
 			}
 			br.close();
 		} catch (NumberFormatException | IOException e) {
-			// TODO Auto-generated catch block
+
 			e.printStackTrace();
 		} 
 		
@@ -210,10 +203,7 @@ public class LogEntry {
 
 
 	public void commitEntry() {
-		
-//		for (Entry entry : entries) {
-//			
-//		}
+
 		
 		commitIndex ++;
 		
@@ -256,15 +246,11 @@ public class LogEntry {
 			flag = 1;
 		}
 		for(Entry entry : entries) {
-			System.out.println("ENTRY ------- > " + entry.toString());
 			
 			if(flag == 1) {
-				System.out.println("if da flag"+entry.getClientIDCommand());
 				array.add(entry);
 			}
-			
 			if((entry.equals(e))&& flag != 1) {
-				System.out.println("if do equals "+entry.getClientIDCommand());
 				flag = 1;
 			}
 		}
