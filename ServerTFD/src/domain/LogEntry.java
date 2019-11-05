@@ -1,4 +1,4 @@
-package DTO;
+package domain;
 
 import java.io.*;
 import java.util.*;

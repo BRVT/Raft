@@ -29,7 +29,7 @@ public class ServerMain {
 			
 			Registry reg = LocateRegistry.createRegistry(port);
 			
-			reg.rebind("rmi://localhost/server", server);
+			reg.rebind(Constants.ADDRESS, server);
 			
 			System.out.println("Vai criar registry");
 			
