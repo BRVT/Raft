@@ -293,7 +293,7 @@ public class Server implements IServer {
 	 * 0 = correu tudo bem
 	 * 1 = ta off
 	 * 2 =  term < currentTerm
-	 * 3 = log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm
+	 * 3 = log doesnÂ’t contain an entry at prevLogIndex whose term matches prevLogTerm
 	 * @return
 	 */
 	public int sendHeartBeat(IServerService server, String entry) {
@@ -308,7 +308,7 @@ public class Server implements IServer {
 		return 0;
 
 	}
-
+  
 	/**
 	 * 
 	 * @param term
@@ -326,7 +326,6 @@ public class Server implements IServer {
 			resetTimer();
 		else {
 			System.out.println(this.port);
-
 			return log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ;
 		}
 		return true;
