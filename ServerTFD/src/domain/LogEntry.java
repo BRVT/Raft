@@ -43,8 +43,6 @@ public class LogEntry {
 
 			dir.mkdir();
 
-
-
 			try {
 				f.createNewFile();
 			} catch (IOException e) {
@@ -128,9 +126,6 @@ public class LogEntry {
 			this.commited = commited;
 			this.clientIDCommand = id_command;
 		}
-
-
-
 
 		public String toString() {
 			return (String.valueOf(index)+":"+command+":"+String.valueOf(term)+":"+

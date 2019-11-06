@@ -53,6 +53,7 @@ public class Server implements IServer {
 	 */
 	public void run() {
 
+		//inicializar os servers de forma ogual (retirar o que esta so no lider)
 		while(true) {
 			if(state.equals(STATE.LEADER)) {
 				leaderWork();
@@ -295,7 +296,6 @@ public class Server implements IServer {
 	class FollowerCommunication extends Thread{ 
 		//dealy que vai ser para retentar comunicao
 		private int delay; 
-		private CountDownLatch latch; 
 		private Registry r;
 		private IServerService iServer;
 		private int portF;
@@ -308,7 +308,6 @@ public class Server implements IServer {
 			connect();
 			this.forElection = forElection;
 			this.delay = delay; 
-			this.latch = latch; 
 		} 
 
 		public void setElect(boolean ele) {
@@ -366,11 +365,11 @@ public class Server implements IServer {
 							nAnswers ++;
 
 							if(nAnswers < 4) {
-								answers.wait(5000);
+								votes.wait(5000);
 								nAnswers = 0;
 							}else {
 								nAnswers = 0;
-								answers.notifyAll();
+								votes.notifyAll();
 							}
 						}
 					}
@@ -398,7 +397,6 @@ public class Server implements IServer {
 	class RemindTask extends TimerTask {
 
 		private Server server;
-		private ArrayList<Integer> trueResponses = new ArrayList<>();
 		private boolean finished;
 
 		public RemindTask(Server server) {
@@ -411,6 +409,8 @@ public class Server implements IServer {
 
 
 				startVote();
+				
+				electionWork();
 				//starts election timer
 				//Timer dentro de timer?? Metemos o CASO 3 noutro timer?
 
@@ -424,13 +424,13 @@ public class Server implements IServer {
 
 				//CASO 1
 				//if #responses > 2
-				if(trueResponses.size() >= Constants.MAJORITY) {
-					//changes state -> state = STATE.LEADER
-					server.changeState(STATE.LEADER);
-					//sends heartbeats -> leaderwork();
-					//server.leaderWork();
-					//return;
-				}
+//				if(trueResponses.size() >= Constants.MAJORITY) {
+//					//changes state -> state = STATE.LEADER
+//					server.changeState(STATE.LEADER);
+//					//sends heartbeats -> leaderwork();
+//					//server.leaderWork();
+//					//return;
+//				}
 
 
 				//CASO 3
@@ -458,7 +458,7 @@ public class Server implements IServer {
 			//changes votedFor -> votedFor = this.id;
 			server.voteFor(server.getPort());
 		}
-
+		@SuppressWarnings("unused")
 		public void electionWork() {
 
 			CountDownLatch latch = new CountDownLatch(2); 
@@ -492,7 +492,7 @@ public class Server implements IServer {
 						if(count >= 2) {
 							server.changeState(STATE.LEADER);
 							server.leaderPort = server.port;
-							leaderWork();
+//							leaderWork();
 						}
 
 						votes = new HashMap<>();
