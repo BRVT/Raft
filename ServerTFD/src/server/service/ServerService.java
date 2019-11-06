@@ -23,14 +23,14 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 	}
 
 	@Override
-	public boolean AppendEntriesRPC(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry,
+	public int AppendEntriesRPC(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry,
 			int leaderCommit) throws RemoteException {
 		
 		return server.receiveAppendEntry(term,leaderID, prevLogIndex, prevLogTerm, entry, leaderCommit);
 	}
 	
 	@Override
-	public boolean RequestVoteRPC(int term, int id, int prevLogIndex, int prevLogTerm) throws RemoteException {
+	public int RequestVoteRPC(int term, int id, int prevLogIndex, int prevLogTerm) throws RemoteException {
 		
 		return server.receiveRequestVote(term, id, prevLogIndex, prevLogTerm);
 		
