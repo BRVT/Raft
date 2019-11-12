@@ -10,8 +10,9 @@ public class ServerMain {
 
 	public static void main(String[] args) {
 		ServerService server;
-		if(args.length != 2){
+		if(args.length != 1){
 			System.err.println("Uso errado");
+			System.exit(0);
 		}
 		
 		int port = Integer.parseInt(args[0]);

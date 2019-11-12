@@ -34,7 +34,7 @@ public class Server implements IServer {
 	private FollowerCommunication second;
 	private FollowerCommunication third;
 	private FollowerCommunication fourth;
-
+	
 	private List<FollowerCommunication> followers = Arrays.asList(first,second,third,fourth);
 
 	private int nAnswers;
@@ -44,7 +44,7 @@ public class Server implements IServer {
 		this.port = port;
 		this.term = 0;
 		this.state = STATE.FOLLOWER;
-
+		
 		log.createFile(this.port);
 	}
 
@@ -55,19 +55,20 @@ public class Server implements IServer {
 
 		//inicializar os servers de forma ogual (retirar o que esta so no lider)
 		while(true) {
-			if(state.equals(STATE.LEADER)) {
-				leaderWork();
-
-			}
-			else if(state.equals(STATE.FOLLOWER)){
+			if(state.equals(STATE.FOLLOWER)){
 				Random r = new Random();
 				int i = r.nextInt(4) + 2;
 
 				timer = new Timer();
-				timer.schedule(new RemindTask(this), i*1000);
-
+				RemindTask rt = new RemindTask(this);
+				timer.schedule(rt, i*10000);
+				while(!rt.getFinished()) {}
 				//como eh que o RemindTask vai saber e atualizar os atributos? passamos o this no construtor?
 				//
+			}
+			if(state.equals(STATE.LEADER)) {
+				leaderWork();
+
 			}
 		}
 	}
@@ -89,7 +90,7 @@ public class Server implements IServer {
 
 		int j = 0;
 		for (FollowerCommunication f : followers) {
-
+			System.out.println("foreach");
 			f = new FollowerCommunication(5000, latch,  false,
 					ports.get(j));
 			j++;
@@ -217,7 +218,8 @@ public class Server implements IServer {
 					setTerm(flag);
 					changeState(STATE.FOLLOWER);
 				}
-			}else if(election == 1) {
+			}else if(election == 1 ) {
+				System.out.println("vem aos votos : " + getPort());
 				server.RequestVoteRPC(getTerm(), getPort(), log.getPrevLogIndex(), log.getPrevLogTerm());
 			}
 
@@ -268,6 +270,7 @@ public class Server implements IServer {
 	 */
 	
 	public int receiveRequestVote(int term, int id, int prevLogIndex, int prevLogTerm) {
+		System.out.println("recebi voto : " + id);
 		//ler paper para saber o que fazer aqui
 		if (votedFor != 0) {
 			return -1;
@@ -277,6 +280,7 @@ public class Server implements IServer {
 			return this.term;
 		}
 		else {
+			System.out.println("olaaaa");
 			votedFor = id;
 			
 			this.term = term;
@@ -318,8 +322,9 @@ public class Server implements IServer {
 		public void run(){ 
 			try{ 
 
-				while(true) {
+				
 					if (!forElection) {
+						while(true) {
 						while(verify == 1) {
 							Thread.sleep(delay); 
 							connect();
@@ -355,25 +360,29 @@ public class Server implements IServer {
 							}
 							this.lastEntry = e;
 						}
+						}
 					}
 					else {
 						nAnswers = 0;
-						verify = sendHeartBeat(iServer, null, 1);
+						if(verify != 1)
+							verify = sendHeartBeat(iServer, null, 1);
 						
 						synchronized(votes) {
 							votes.put(portF, verify);
-							nAnswers ++;
+							nAnswers++;
 
-							if(nAnswers < 4) {
+							if(nAnswers < 3) {
+								
 								votes.wait(5000);
+								System.out.println("esperou : " + nAnswers);
 								nAnswers = 0;
 							}else {
+								System.out.println("deu unlock");
 								nAnswers = 0;
 								votes.notifyAll();
 							}
 						}
 					}
-				}
 			} 
 			catch (InterruptedException e){ 
 				e.printStackTrace(); 
@@ -401,16 +410,36 @@ public class Server implements IServer {
 
 		public RemindTask(Server server) {
 			this.server = server;
+			this.finished = false;
 		}
-
+		
+		public void setFinished(boolean f) {
+			this.finished = f;
+		}
+		public boolean getFinished() {
+			return finished;
+		}
 		public void run() {
 			timer.cancel();
-			while(!finished) {
-
+			
+			if(votedFor == 0) {
+				
+				System.out.println("entrou");
 
 				startVote();
 				
 				electionWork();
+				
+			}else {
+				
+				Random r = new Random();
+				int i = r.nextInt(4) + 2;
+				timer = new Timer();
+				timer.schedule(new RemindTask(server), i*10000);
+				
+			}
+//			while(!finished) {
+				
 				//starts election timer
 				//Timer dentro de timer?? Metemos o CASO 3 noutro timer?
 
@@ -443,9 +472,7 @@ public class Server implements IServer {
 
 				//time out --> eleicao
 
-			}
-			timer = new Timer();
-			timer.schedule(new RemindTask(server), 5*100);
+			//}
 		}
 
 		public void startVote() {
@@ -472,15 +499,13 @@ public class Server implements IServer {
 
 			int j = 0;
 			for (FollowerCommunication f : followers) {
-
+				System.out.println("foreach");
 				f = new FollowerCommunication(5000, latch, true, 
 						ports.get(j));
+				f.start();
 				j++;
 			}
 
-			for (FollowerCommunication f : followers) {
-				f.start();
-			}
 
 			while(true) {
 				synchronized (votes) {
@@ -492,6 +517,7 @@ public class Server implements IServer {
 						if(count >= 2) {
 							server.changeState(STATE.LEADER);
 							server.leaderPort = server.port;
+							finished = true;
 //							leaderWork();
 						}
 
