@@ -15,14 +15,14 @@ import server.constants.Constants;
 import server.service.IServerService;
 
 public class Server implements IServer {
-
+	
 	private int port;
 	private int leaderPort;
 	private STATE state;
 	private int term;
 	private int votedFor;
-
 	
+
 	private Timer timer;
 
 	private ArrayList<String> pendentEntry = new ArrayList<>();
@@ -34,7 +34,7 @@ public class Server implements IServer {
 	private FollowerCommunication second;
 	private FollowerCommunication third;
 	private FollowerCommunication fourth;
-	
+
 	private List<FollowerCommunication> followers = Arrays.asList(first,second,third,fourth);
 
 	private int nAnswers;
@@ -44,7 +44,8 @@ public class Server implements IServer {
 		this.port = port;
 		this.term = 0;
 		this.state = STATE.FOLLOWER;
-		
+		this.nAnswers = 0;
+
 		log.createFile(this.port);
 	}
 
@@ -52,34 +53,28 @@ public class Server implements IServer {
 	 * Inicializa o server ---REVER---
 	 */
 	public void run() {
-
+		Random r = new Random();
 		//inicializar os servers de forma ogual (retirar o que esta so no lider)
-		while(true) {
-			if(state.equals(STATE.FOLLOWER)){
-				Random r = new Random();
-				int i = r.nextInt(4) + 2;
 
-				timer = new Timer();
-				RemindTask rt = new RemindTask(this);
-				timer.schedule(rt, i*10000);
-				while(!rt.getFinished()) {}
-				//como eh que o RemindTask vai saber e atualizar os atributos? passamos o this no construtor?
-				//
-			}
-			if(state.equals(STATE.LEADER)) {
-				leaderWork();
+		int count =0;
 
-			}
-		}
+		int i = r.nextInt(3) + 1;
+
+		timer = new Timer();
+		RemindTask rt = new RemindTask(this);
+		timer.schedule(rt, i*10000);
+		//como eh que o RemindTask vai saber e atualizar os atributos? passamos o this no construtor?
+		//
+
+
+
 	}
 
 	/**
 	 * Funcao que contem o bulk do trabalho realizado pelo Leader
 	 */
-	@SuppressWarnings("unused")
+	
 	public void leaderWork() {
-
-		CountDownLatch latch = new CountDownLatch(2); 
 
 		ArrayList<Integer> ports = new ArrayList<>();
 
@@ -90,14 +85,10 @@ public class Server implements IServer {
 
 		int j = 0;
 		for (FollowerCommunication f : followers) {
-			System.out.println("foreach");
-			f = new FollowerCommunication(5000, latch,  false,
-					ports.get(j));
-			j++;
-		}
-
-		for (FollowerCommunication f : followers) {
+			
+			f = new FollowerCommunication(5000, false, ports.get(j));
 			f.start();
+			j++;
 		}
 
 		while(true) {
@@ -121,9 +112,15 @@ public class Server implements IServer {
 	 * Faz reset a um timer (?) - devia ser static e receber um timer?
 	 */
 	public void resetTimer() {
+		Random r = new Random();
+		//inicializar os servers de forma ogual (retirar o que esta so no lider)
 
+		int count =0;
+
+		int i = r.nextInt(3) + 1;
+		
 		timer = new Timer();
-		timer.schedule(new RemindTask(this), 5*100);
+		timer.schedule(new RemindTask(this), i*10000);
 	}
 
 	public void voteFor(int id) {
@@ -220,7 +217,7 @@ public class Server implements IServer {
 				}
 			}else if(election == 1 ) {
 				System.out.println("vem aos votos : " + getPort());
-				server.RequestVoteRPC(getTerm(), getPort(), log.getPrevLogIndex(), log.getPrevLogTerm());
+				return server.RequestVoteRPC(getTerm(), getPort(), log.getPrevLogIndex(), log.getPrevLogTerm());
 			}
 
 		} catch (RemoteException e) {
@@ -242,22 +239,25 @@ public class Server implements IServer {
 	 */
 	public int receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry, int leaderCommit) {
 		
-		if(votedFor != 0)
-			votedFor = 0;
 		
+		
+		int ret = -1;
 		if(term < this.getTerm()) {
-			return this.getTerm();
+			ret = this.getTerm();
 		}else {
+			timer.cancel();
 			this.leaderPort = leaderID;
-			if(entry == null) { 
-
-				return 0;
+			if(entry == null) { 			
+				ret = 0;
 			}else {
 				System.out.println(this.port);
-				return log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ? 0 : 1 ;
+				
+				ret = log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ? 0 : 1 ;
+				
 			}
+			resetTimer();
 		}
-
+		return ret;
 	}
 
 	/**
@@ -268,11 +268,12 @@ public class Server implements IServer {
 	 * @param prevLogTerm - prevLogTerm do candidato
 	 * @return -1 se ja votou, 0 se concorda com nova leadership, termo se nao concorda
 	 */
-	
+
 	public int receiveRequestVote(int term, int id, int prevLogIndex, int prevLogTerm) {
 		System.out.println("recebi voto : " + id);
 		//ler paper para saber o que fazer aqui
 		if (votedFor != 0) {
+			System.out.println("nega voto");
 			return -1;
 		}
 		else if (this.term > term) {
@@ -282,22 +283,16 @@ public class Server implements IServer {
 		else {
 			System.out.println("olaaaa");
 			votedFor = id;
-			
+
 			this.term = term;
 			return 0;
 		}
-		//comparar termo
-			//se this.term for maior, rejeitar recebido e enviar o this.term
-		
-			//se this.term <= term, atualizar term, devolver true e atualizar flag para 
-		    //bloquear votos nesta eleicao
-
 	}
 
 	/**
 	 * Para o leader comunicar com os followers
 	 */
-	class FollowerCommunication extends Thread{ 
+	class FollowerCommunication extends Thread { 
 		//dealy que vai ser para retentar comunicao
 		private int delay; 
 		private Registry r;
@@ -306,25 +301,26 @@ public class Server implements IServer {
 		private int verify;
 		private Entry lastEntry;
 		private boolean forElection;
-		public FollowerCommunication(int delay, CountDownLatch latch, boolean forElection, int port) { 
+
+
+		public FollowerCommunication(int delay, boolean forElection, int port) { 
 			this.portF = port;
 			this.lastEntry = log.getLastEntry();
 			connect();
 			this.forElection = forElection;
 			this.delay = delay; 
+			System.out.println(portF + " ! " + this.getName());
 		} 
 
 		public void setElect(boolean ele) {
 			forElection = ele;
 		}
-		
+
 		@Override
 		public void run(){ 
 			try{ 
-
-				
-					if (!forElection) {
-						while(true) {
+				if (!forElection) {
+					while(true) {
 						while(verify == 1) {
 							Thread.sleep(delay); 
 							connect();
@@ -339,7 +335,7 @@ public class Server implements IServer {
 							System.out.println("Veio entry " + e.toString());
 							ArrayList <Entry> array = log.getLastEntriesSince(lastEntry);
 							for (Entry entry : array) {
-								System.out.println("for each da thread " + entry.toString());
+								
 								verify = sendHeartBeat(iServer, entry.toString(), 0);
 							}
 
@@ -347,12 +343,17 @@ public class Server implements IServer {
 							//O verify nao verifica todas as entries enviadas
 							//Ex: a Entry 1 da verify 1 (erro) e a entry 2 dah fixe, logo dah commit ah 1 na mesma?
 							synchronized(answers) {
+								System.out.println(nAnswers + " <------------");
 								answers.put(portF, verify);
 								nAnswers ++;
 
-								if(nAnswers < 4) {
-									answers.wait(5000);
-									nAnswers = 0;
+								if(nAnswers < 3) {
+									try {
+										answers.wait(8000);
+										nAnswers = 0;
+									}catch (IllegalMonitorStateException i) {
+										
+									}
 								}else {
 									nAnswers = 0;
 									answers.notifyAll();
@@ -360,29 +361,30 @@ public class Server implements IServer {
 							}
 							this.lastEntry = e;
 						}
-						}
 					}
-					else {
-						nAnswers = 0;
-						if(verify != 1)
-							verify = sendHeartBeat(iServer, null, 1);
-						
-						synchronized(votes) {
-							votes.put(portF, verify);
-							nAnswers++;
+				}
+				else {
+					if(verify != 1)
+						verify = sendHeartBeat(iServer, null, 1);
 
-							if(nAnswers < 3) {
-								
-								votes.wait(5000);
-								System.out.println("esperou : " + nAnswers);
-								nAnswers = 0;
-							}else {
-								System.out.println("deu unlock");
-								nAnswers = 0;
-								votes.notifyAll();
-							}
+					synchronized(votes) {
+						votes.put(portF, verify);
+						nAnswers++;
+
+						if(nAnswers < 3) {
+							System.out.println("esperou : " + nAnswers);
+							votes.wait(5000);
+
+							nAnswers = 0;
+						}else {
+							System.out.println("deu unlock");
+							votes.notifyAll();
+							nAnswers = 0;
+							forElection = false;
+
 						}
 					}
+				}
 			} 
 			catch (InterruptedException e){ 
 				e.printStackTrace(); 
@@ -412,7 +414,7 @@ public class Server implements IServer {
 			this.server = server;
 			this.finished = false;
 		}
-		
+
 		public void setFinished(boolean f) {
 			this.finished = f;
 		}
@@ -420,57 +422,29 @@ public class Server implements IServer {
 			return finished;
 		}
 		public void run() {
-			timer.cancel();
-			
-			if(votedFor == 0) {
-				
+
+			if(votedFor == 0 || votedFor == leaderPort) {
+
 				System.out.println("entrou");
 
 				startVote();
-				
+
 				electionWork();
-				
-			}else {
-				
-				Random r = new Random();
-				int i = r.nextInt(4) + 2;
-				timer = new Timer();
-				timer.schedule(new RemindTask(server), i*10000);
-				
+
+				System.out.println("saiu do election");
+
 			}
-//			while(!finished) {
-				
-				//starts election timer
-				//Timer dentro de timer?? Metemos o CASO 3 noutro timer?
+			timer.cancel();
 
-				//sends RequestVoteRPC -> RequestVoteRPC(this.term, this.id, this.lasLogIndex, this.lastLogTerm)
-				//thread para isto??
-
-				//waits responses
-				//copiar o synchronized do FollowerCommunication
-
-				//count das responses true
-
-				//CASO 1
-				//if #responses > 2
-//				if(trueResponses.size() >= Constants.MAJORITY) {
-//					//changes state -> state = STATE.LEADER
-//					server.changeState(STATE.LEADER);
-//					//sends heartbeats -> leaderwork();
-//					//server.leaderWork();
-//					//return;
-//				}
+			//CASO 3
+			//election timer ends (F)
+			//timeout random~
+			//timer = new Timer();
+			//Random r = new Random();
+			//timer.schedule(new RemindTask(), (r.nextInt(3) + 2) * 1000);
 
 
-				//CASO 3
-				//election timer ends (F)
-				//timeout random~
-				//timer = new Timer();
-				//Random r = new Random();
-				//timer.schedule(new RemindTask(), (r.nextInt(3) + 2) * 1000);
-
-
-				//time out --> eleicao
+			//time out --> eleicao
 
 			//}
 		}
@@ -484,11 +458,12 @@ public class Server implements IServer {
 
 			//changes votedFor -> votedFor = this.id;
 			server.voteFor(server.getPort());
+			votes.put(server.getPort(), 0);
 		}
-		@SuppressWarnings("unused")
+
 		public void electionWork() {
 
-			CountDownLatch latch = new CountDownLatch(2); 
+
 
 			ArrayList<Integer> ports = new ArrayList<>();
 
@@ -500,30 +475,36 @@ public class Server implements IServer {
 			int j = 0;
 			for (FollowerCommunication f : followers) {
 				System.out.println("foreach");
-				f = new FollowerCommunication(5000, latch, true, 
-						ports.get(j));
+				f = new FollowerCommunication(5000, true, ports.get(j));
 				f.start();
 				j++;
 			}
 
 
-			while(true) {
+			while(!finished) {
 				synchronized (votes) {
 					if(votes.size() > 2){
+						
 						int count = 0;
 						for (Integer i : votes.values()) {
 							if(i == 0) count ++;
+							System.out.println(votes.keySet() + " | " + i + " | " + count);
 						}
-						if(count >= 2) {
+						if(count > 2) {
+
 							server.changeState(STATE.LEADER);
 							server.leaderPort = server.port;
+							System.out.println("ja tem votos? -> " + server.getState());
+
 							finished = true;
-//							leaderWork();
+							leaderWork();
 						}
 
 						votes = new HashMap<>();
 					}
+
 				}
+
 			}
 		}
 	}
