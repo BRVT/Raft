@@ -47,10 +47,10 @@ public class Server implements IServer {
 		//inicializar os servers de forma igual (retirar o que esta so no lider)
 
 		int i = r.nextInt(3) + 1;
-
+		int e = r.nextInt(3) + 1;
 		timer = new Timer();
 		RemindTask rt = new RemindTask(this);
-		timer.schedule(rt, i * 10000);
+		timer.schedule(rt, i * e * 5000);
 	}
 
 	/**
@@ -130,9 +130,12 @@ public class Server implements IServer {
 		int ret = -1;
 		if(term < this.getTerm()) {
 			ret = this.getTerm();
+			
 		}else {
+			this.state = STATE.FOLLOWER;
 			timer.cancel();
 			this.leaderPort = leaderID;
+			if(leaderPort == votedFor) votedFor = 0;
 			if(entry == null) { 			
 				ret = 0;
 			}else {
@@ -157,8 +160,17 @@ public class Server implements IServer {
 
 	public int receiveRequestVote(int term, int id, int prevLogIndex, int prevLogTerm) {
 		System.out.println("recebi voto : " + id);
+		System.out.println(" O MEU TERMO --------> " + this.term + "  | O TERMO DO OUTRO ------> " +term);
 		//ler paper para saber o que fazer aqui
-		if (votedFor != 0) {
+		if(this.term < term) {
+			this.term = term;
+			this.state = STATE.FOLLOWER;
+			
+			return 0;
+		}
+		
+		else if (votedFor != 0) {
+			
 			System.out.println("nega voto");
 			return -1;
 		}
@@ -166,10 +178,10 @@ public class Server implements IServer {
 			//passa a candidato e inicia voto?
 			return this.term;
 		}
+		
 		else {
-			System.out.println("olaaaa");
 			votedFor = id;
-
+			
 			this.term = term;
 			return 0;
 		}

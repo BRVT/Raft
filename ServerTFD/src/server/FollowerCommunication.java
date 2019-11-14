@@ -26,7 +26,7 @@ class FollowerCommunication extends Thread {
 	private boolean forElection;
 	private LogEntry log;
 	private Server server;
-	
+
 
 
 	public FollowerCommunication(Server server, int delay, boolean forElection, int port) { 
@@ -34,11 +34,11 @@ class FollowerCommunication extends Thread {
 		this.server = server;
 		this.log = server.getLog();
 		this.lastEntry = log.getLastEntry();
-		
+
 		connect();
 		this.forElection = forElection;
 		this.delay = delay; 
-		
+
 		System.out.println(portF + " --> " + this.getName());
 	} 
 
@@ -65,7 +65,7 @@ class FollowerCommunication extends Thread {
 						System.out.println("Veio entry " + e.toString());
 						ArrayList <Entry> array = log.getLastEntriesSince(lastEntry);
 						for (Entry entry : array) {
-							
+
 							verify = sendHeartBeat(iServer, entry.toString(), 0);
 						}
 
@@ -82,7 +82,7 @@ class FollowerCommunication extends Thread {
 									server.getAnswers().wait(8000);
 									server.setnAnswers(0);
 								}catch (IllegalMonitorStateException i) {
-									
+
 								}
 							}else {
 								server.setnAnswers(0);
@@ -94,24 +94,26 @@ class FollowerCommunication extends Thread {
 				}
 			}
 			else {
-				if(verify != 1)
+				if(verify != 1) {
 					verify = sendHeartBeat(iServer, null, 1);
 
-				synchronized(server.getVotes()) {
-					server.addVote(portF, verify);
-					server.incrementNAnswers();
+					synchronized(server.getVotes()) {
+						server.addVote(portF, verify);
 
-					if(server.getnAnswers() < 3) {
-						System.out.println("esperou : " + server.getnAnswers()) ;
-						server.getVotes().wait(5000);
+						server.incrementNAnswers();
 
-						server.setnAnswers(0);
-					}else {
-						System.out.println("deu unlock");
-						server.getVotes().notifyAll();
-						server.setnAnswers(0);
-						forElection = false;
+						if(server.getnAnswers() < 3) {
+							System.out.println("esperou : " + server.getnAnswers()) ;
+							server.getVotes().wait(8000);
 
+							server.setnAnswers(0);
+						}else {
+							System.out.println("deu unlock");
+							server.getVotes().notifyAll();
+							server.setnAnswers(0);
+							forElection = false;
+
+						}
 					}
 				}
 			}
@@ -130,7 +132,7 @@ class FollowerCommunication extends Thread {
 			verify = 1;
 		} 
 	}
-	
+
 	/**
 	 * Hearbeat enviado pelo leader. Envia AppendEntries vazio, se nao houver requests para enviar.
 	 * 0 = correu tudo bem

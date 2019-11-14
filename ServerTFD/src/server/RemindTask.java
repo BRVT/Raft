@@ -2,6 +2,7 @@ package server;
 
 import java.util.ArrayList;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 import enums.STATE;
 import server.constants.Constants;
@@ -25,15 +26,31 @@ class RemindTask extends TimerTask {
 	public boolean getFinished() {
 		return finished;
 	}
+	
+	public static void mySleep (int val) {
+	    try { 
+	        TimeUnit.SECONDS.sleep(val);
+	    } catch (InterruptedException e) {
+	        
+	    }
+	}
+	
 	public void run() {
 
 		if(server.getVotedFor() == 0 || server.getVotedFor() == server.getLeaderPort() ) {
 
 			System.out.println("Começa eleição");
 
-			startVote();
-
-			electionWork();
+			
+			
+			while(!finished) {
+				startVote();
+				electionWork();
+				if(server.getState().equals(STATE.FOLLOWER))
+					Thread.currentThread().interrupt();
+				mySleep(20);
+			}
+				
 
 			
 
@@ -43,9 +60,9 @@ class RemindTask extends TimerTask {
 		//CASO 3
 		//election timer ends (F)
 		//timeout random~
-		//timer = new Timer();
-		//Random r = new Random();
-		//timer.schedule(new RemindTask(), (r.nextInt(3) + 2) * 1000);
+//		timer = new Timer();
+//		Random r = new Random();
+//		timer.schedule(new RemindTask(), (r.nextInt(3) + 2) * 1000);
 
 
 		//time out --> eleicao
@@ -63,7 +80,8 @@ class RemindTask extends TimerTask {
 
 		//changes votedFor -> votedFor = this.id;
 		server.setVoteFor(server.getPort());
-		server.addVote(server.getPort(), 0);
+		
+		
 	}
 
 	public void electionWork() {
@@ -85,8 +103,11 @@ class RemindTask extends TimerTask {
 
 		System.out.println("threads para comunicar com outros servers criadas ");
 		
-		while(!finished) {
+		
 			synchronized (server.getVotes()) {
+				server.addVote(server.getPort(), 0);
+				
+				System.out.println("??");
 				if(server.getVotes().size() > 2){
 					
 					int count = 0;
@@ -94,8 +115,10 @@ class RemindTask extends TimerTask {
 						if(i == 0) count ++;
 						System.out.println("\n\n Recebi votos de " + server.getVotes().keySet() + " | " + i + " | " + count);
 					}
+					
 					if(count > 2) {
 						System.out.println("tenho maioria de votos: " +  server.getVotes().keySet() );
+						
 						server.setState(STATE.LEADER);
 						server.setLeaderPort(server.getPort());
 						System.out.println("SOU O LIDER-> " + server.getLeaderPort());
@@ -107,7 +130,7 @@ class RemindTask extends TimerTask {
 					server.resetVotes();
 				}
 
-			}
+			
 
 		}
 	}
