@@ -26,52 +26,32 @@ class RemindTask extends TimerTask {
 	public boolean getFinished() {
 		return finished;
 	}
-	
+
 	public static void mySleep (int val) {
-	    try { 
-	        TimeUnit.SECONDS.sleep(val);
-	    } catch (InterruptedException e) {
-	        
-	    }
-	}
-	
-	public void run() {
-
-		if(server.getVotedFor() == 0 || server.getVotedFor() == server.getLeaderPort() ) {
-
-			System.out.println("Começa eleição");
-
-			
-			
-			while(!finished) {
-				startVote();
-				electionWork();
-				if(server.getState().equals(STATE.FOLLOWER))
-					Thread.currentThread().interrupt();
-				mySleep(20);
-			}
-				
-
-			
+		try { 
+			TimeUnit.SECONDS.sleep(val);
+		} catch (InterruptedException e) {
 
 		}
+	}
+
+	public void run() {
+		System.out.println("Começa eleição");
+
+		while(!finished) {
+			startVote();
+			electionWork();
+			if(server.getState().equals(STATE.FOLLOWER))
+				Thread.currentThread().interrupt();
+			mySleep(20);
+		}	
+
 		server.cancelTimer();
 
-		//CASO 3
-		//election timer ends (F)
-		//timeout random~
-//		timer = new Timer();
-//		Random r = new Random();
-//		timer.schedule(new RemindTask(), (r.nextInt(3) + 2) * 1000);
-
-
-		//time out --> eleicao
-
-		//}
 	}
 
 	public void startVote() {
-		
+
 		//increases term -> this.term++;
 		server.increaseTerm();
 
@@ -80,8 +60,8 @@ class RemindTask extends TimerTask {
 
 		//changes votedFor -> votedFor = this.id;
 		server.setVoteFor(server.getPort());
-		
-		
+
+
 	}
 
 	public void electionWork() {
@@ -93,7 +73,7 @@ class RemindTask extends TimerTask {
 				ports.add(integer);
 		}
 		System.out.println("carregar todos os portos para votacao");
-		
+
 		int j = 0;
 		for (FollowerCommunication f : server.getFollowers()) {
 			f = new FollowerCommunication(server, 5000, true, ports.get(j));
@@ -102,35 +82,35 @@ class RemindTask extends TimerTask {
 		}
 
 		System.out.println("threads para comunicar com outros servers criadas ");
-		
-		
-			synchronized (server.getVotes()) {
-				server.addVote(server.getPort(), 0);
-				
-				System.out.println("??");
-				if(server.getVotes().size() > 2){
-					
-					int count = 0;
-					for (Integer i : server.getVotes().values()) {
-						if(i == 0) count ++;
-						System.out.println("\n\n Recebi votos de " + server.getVotes().keySet() + " | " + i + " | " + count);
-					}
-					
-					if(count > 2) {
-						System.out.println("tenho maioria de votos: " +  server.getVotes().keySet() );
-						
-						server.setState(STATE.LEADER);
-						server.setLeaderPort(server.getPort());
-						System.out.println("SOU O LIDER-> " + server.getLeaderPort());
 
-						finished = true;
-						server.leaderWork();
-					}
 
-					server.resetVotes();
-				}
+		synchronized (server.getVotes()) {
+			server.addVote(server.getPort(), 0);
 
 			
+			if(server.getVotes().size() > 2){
+
+				int count = 0;
+				for (Integer i : server.getVotes().values()) {
+					if(i == 0) count ++;
+					System.out.println("\n\n Recebi votos de " + server.getVotes().keySet() + " | " + i + " | " + count);
+				}
+
+				if(count > 2) {
+					System.out.println("tenho maioria de votos: " +  server.getVotes().keySet() );
+
+					server.setState(STATE.LEADER);
+					server.setLeaderPort(server.getPort());
+					System.out.println("SOU O LIDER-> " + server.getLeaderPort());
+
+					finished = true;
+					server.leaderWork();
+				}
+
+				server.resetVotes();
+			}
+
+
 
 		}
 	}

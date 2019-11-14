@@ -37,6 +37,13 @@ public class Server implements IServer {
 		this.nAnswers = 0;
 
 		log.createFile(this.port);
+	} 
+	
+	public Server(int port, int term) {
+		this.port = port;
+		this.term = term;
+		this.state = STATE.FOLLOWER;
+		this.nAnswers = 0;
 	}
 
 	/**
@@ -46,11 +53,11 @@ public class Server implements IServer {
 		Random r = new Random();
 		//inicializar os servers de forma igual (retirar o que esta so no lider)
 
-		int i = r.nextInt(3) + 1;
-		int e = r.nextInt(3) + 1;
+		int i = r.nextInt(2) + 1;
+		int e = r.nextInt(2) + 1;
 		timer = new Timer();
 		RemindTask rt = new RemindTask(this);
-		timer.schedule(rt, i * e * 5000);
+		timer.schedule(rt, i * e * 10000);
 	}
 
 	/**
@@ -126,7 +133,7 @@ public class Server implements IServer {
 	 */
 	public int receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry, int leaderCommit) {
 		
-		
+		System.out.println("Recebi heartbeat " + term +" | " + leaderID);
 		int ret = -1;
 		if(term < this.getTerm()) {
 			ret = this.getTerm();
@@ -163,8 +170,10 @@ public class Server implements IServer {
 		System.out.println(" O MEU TERMO --------> " + this.term + "  | O TERMO DO OUTRO ------> " +term);
 		//ler paper para saber o que fazer aqui
 		if(this.term < term) {
+			votedFor = id;
 			this.term = term;
 			this.state = STATE.FOLLOWER;
+			resetTimer();
 			
 			return 0;
 		}
@@ -172,6 +181,7 @@ public class Server implements IServer {
 		else if (votedFor != 0) {
 			
 			System.out.println("nega voto");
+			resetTimer();
 			return -1;
 		}
 		else if (this.term > term) {
@@ -181,8 +191,8 @@ public class Server implements IServer {
 		
 		else {
 			votedFor = id;
-			
 			this.term = term;
+			resetTimer();
 			return 0;
 		}
 	}
@@ -191,13 +201,14 @@ public class Server implements IServer {
 	 * Faz reset a um timer (?) - devia ser static e receber um timer?
 	 */
 	public void resetTimer() {
-		Random r = new Random();
+		Random r = new Random(port);
 		//inicializar os servers de forma ogual (retirar o que esta so no lider)
 
 		int i = r.nextInt(3) + 1;
-		
+		int e = r.nextInt(2) + 1;
+		timer.cancel();
 		timer = new Timer();
-		timer.schedule(new RemindTask(this), i*10000);
+		timer.schedule(new RemindTask(this), i*10000 + e*1000);
 	}
 	
 

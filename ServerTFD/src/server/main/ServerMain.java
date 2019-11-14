@@ -10,15 +10,20 @@ public class ServerMain {
 
 	public static void main(String[] args) {
 		ServerService server;
-		if(args.length != 1){
-			System.err.println("Uso errado");
-			System.exit(0);
-		}
+//		if(args.length != 1){
+//			System.err.println("Uso errado");
+//			System.exit(0);
+//		}
 		
 		int port = Integer.parseInt(args[0]);
 		
 		try{
-			server = new ServerService(port);
+			if(args.length == 1) {
+				server = new ServerService(port);
+			}else {
+				server = new ServerService(port, Integer.parseInt(args[1]));
+			}
+			
 			
 			Registry reg = LocateRegistry.createRegistry(port);
 			

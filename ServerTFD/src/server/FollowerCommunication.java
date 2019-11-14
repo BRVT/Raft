@@ -50,7 +50,7 @@ class FollowerCommunication extends Thread {
 	public void run(){ 
 		try{ 
 			if (!forElection) {
-				while(true) {
+				while(server.getState().equals(STATE.LEADER)) {
 					while(verify == 1) {
 						Thread.sleep(delay); 
 						connect();
