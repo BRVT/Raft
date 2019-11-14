@@ -17,16 +17,8 @@ public class ServerMain {
 		
 		int port = Integer.parseInt(args[0]);
 		
-//		if(!checkPortValue(port)) {
-//			System.err.println("Porto errado, use um destes:");
-//			Constants.PORTS_FOR_SERVER_REGISTRIES.iterator().forEachRemaining(p -> System.out.println(p));
-//		}
-		
-		
 		try{
 			server = new ServerService(port);
-			
-			System.out.println("Vai criar registry");
 			
 			Registry reg = LocateRegistry.createRegistry(port);
 			
@@ -42,11 +34,4 @@ public class ServerMain {
 		}
 	
 	}
-
-//	private static boolean checkPortValue(int port) {
-//		
-//		return Constants.PORTS_FOR_SERVER_REGISTRIES.contains(port);
-//		
-//	}
-	
 }
