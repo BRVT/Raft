@@ -166,9 +166,7 @@ public class Server implements IServer {
 	 */
 
 	public int receiveRequestVote(int term, int id, int prevLogIndex, int prevLogTerm) {
-		System.out.println("recebi voto : " + id);
-		System.out.println(" O MEU TERMO --------> " + this.term + "  | O TERMO DO OUTRO ------> " +term);
-		//ler paper para saber o que fazer aqui
+		
 		if(this.term < term) {
 			votedFor = id;
 			this.term = term;
@@ -185,7 +183,7 @@ public class Server implements IServer {
 			return -1;
 		}
 		else if (this.term > term) {
-			//passa a candidato e inicia voto?
+			
 			return this.term;
 		}
 		
