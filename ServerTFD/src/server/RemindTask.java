@@ -36,7 +36,7 @@ class RemindTask extends TimerTask {
 	}
 
 	public void run() {
-		System.out.println("Começa eleição");
+		System.out.println("ComeÃ§a eleiÃ§Ã£o");
 
 		while(!finished) {
 			startVote();
@@ -72,33 +72,26 @@ class RemindTask extends TimerTask {
 			if(integer != this.server.getPort())
 				ports.add(integer);
 		}
-		System.out.println("carregar todos os portos para votacao");
-
+		
 		int j = 0;
 		for (FollowerCommunication f : server.getFollowers()) {
 			f = new FollowerCommunication(server, 5000, true, ports.get(j));
 			f.start();
 			j++;
 		}
-
-		System.out.println("threads para comunicar com outros servers criadas ");
-
-
+		
 		synchronized (server.getVotes()) {
 			server.addVote(server.getPort(), 0);
-
 			
 			if(server.getVotes().size() > 2){
 
 				int count = 0;
 				for (Integer i : server.getVotes().values()) {
 					if(i == 0) count ++;
-					System.out.println("\n\n Recebi votos de " + server.getVotes().keySet() + " | " + i + " | " + count);
+					
 				}
 
 				if(count > 2) {
-					System.out.println("tenho maioria de votos: " +  server.getVotes().keySet() );
-
 					server.setState(STATE.LEADER);
 					server.setLeaderPort(server.getPort());
 					System.out.println("SOU O LIDER-> " + server.getLeaderPort());
@@ -109,9 +102,6 @@ class RemindTask extends TimerTask {
 
 				server.resetVotes();
 			}
-
-
-
 		}
 	}
 }
