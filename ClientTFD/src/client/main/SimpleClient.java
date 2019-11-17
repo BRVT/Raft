@@ -1,6 +1,5 @@
 package client.main;
 
-import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -8,7 +7,6 @@ import java.rmi.registry.Registry;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
 import server.service.IServerService;
 

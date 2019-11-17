@@ -1,6 +1,5 @@
 package server.main;
 
-import java.rmi.Naming;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
@@ -11,27 +10,24 @@ public class ServerMain {
 
 	public static void main(String[] args) {
 		ServerService server;
-		if(args.length != 2){
-			System.err.println("Uso errado");
-		}
+//		if(args.length != 1){
+//			System.err.println("Uso errado");
+//			System.exit(0);
+//		}
 		
 		int port = Integer.parseInt(args[0]);
 		
-//		if(!checkPortValue(port)) {
-//			System.err.println("Porto errado, use um destes:");
-//			Constants.PORTS_FOR_SERVER_REGISTRIES.iterator().forEachRemaining(p -> System.out.println(p));
-//		}
-		
-		int role = Integer.parseInt(args[1]);
-		
 		try{
-			server = new ServerService(port, role);
+			if(args.length == 1) {
+				server = new ServerService(port);
+			}else {
+				server = new ServerService(port, Integer.parseInt(args[1]));
+			}
+			
 			
 			Registry reg = LocateRegistry.createRegistry(port);
 			
 			reg.rebind(Constants.ADDRESS, server);
-			
-			System.out.println("Vai criar registry");
 			
 			System.out.println("Server estah a escutar no porto " + args[0]);
 			
@@ -43,11 +39,4 @@ public class ServerMain {
 		}
 	
 	}
-
-	private static boolean checkPortValue(int port) {
-		
-		return Constants.PORTS_FOR_SERVER_REGISTRIES.contains(port);
-		
-	}
-	
 }

@@ -14,8 +14,12 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 	
 	private Server server;
 	
-	public ServerService(int port, int role) throws RemoteException {
-		server = new Server(port,role);
+	public ServerService(int port) throws RemoteException {
+		server = new Server(port);
+	}
+	
+	public ServerService(int port, int term) throws RemoteException {
+		server = new Server(port, term);
 	}
 	
 	public String request(String s, int id) throws RemoteException{
@@ -23,10 +27,17 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 	}
 
 	@Override
-	public boolean AppendEntriesRPC(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry,
+	public int AppendEntriesRPC(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry,
 			int leaderCommit) throws RemoteException {
 		
 		return server.receiveAppendEntry(term,leaderID, prevLogIndex, prevLogTerm, entry, leaderCommit);
+	}
+	
+	@Override
+	public int RequestVoteRPC(int term, int id, int prevLogIndex, int prevLogTerm) throws RemoteException {
+		
+		return server.receiveRequestVote(term, id, prevLogIndex, prevLogTerm);
+		
 	}
 
 	@Override
@@ -38,4 +49,6 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 	public void run() {
 		server.run();
 	}
+
+	
 }
