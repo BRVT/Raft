@@ -240,4 +240,14 @@ public class LogEntry {
 		return array;
 	}
 
+	public String getEntry(String string) {
+		for (Entry entry : entries) {
+			if(entry.command.split("-")[1].compareTo(string) == 0) {
+				return entry.command.split("-")[2];
+			}
+		}
+		return null;
+		
+	}
+
 }
