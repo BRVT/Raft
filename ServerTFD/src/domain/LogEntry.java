@@ -1,6 +1,7 @@
 package domain;
 
 import java.io.*;
+import java.lang.Thread.State;
 import java.util.*;
 
 import javafx.util.Pair;
@@ -27,8 +28,9 @@ public class LogEntry {
 
 	private ArrayList<Entry> entries;
 	private TableManager tManager;
-
 	
+	private List<Thread> followers;
+
 	public LogEntry() {
 		this.entries = new ArrayList<>();
 		this.prevLogIndex = 0;
@@ -135,11 +137,16 @@ public class LogEntry {
 
 			prevLogIndex ++;
 			
+			for (Thread t : followers) {
+				if(t.getState() == State.TIMED_WAITING) t.interrupt();
+			}
+			
 			try {
 				if(f.length() > 300) {
 					generateSnapshot();
 					clearLogFile();
 				}
+				
 				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 				writer.write(lastEntry.toString());
 				writer.newLine();
@@ -331,5 +338,8 @@ public class LogEntry {
 		return null;
 		
 	}
-
+	
+	public void setFollowerThreads(List<Thread> f) {
+		this.followers = f;
+	}
 }
