@@ -86,7 +86,8 @@ public class SimpleClient {
 			}
 			s.close();
 		}catch (Exception e) {
-			System.err.print("Morreu" + e.getMessage());
+			e.printStackTrace();
+			System.err.print("Morreu " + e.getMessage()+"\n");
 		}
 	}
 
@@ -112,6 +113,7 @@ public class SimpleClient {
 			System.out.println("Resposta : \n"+reply);
 
 		}catch(Exception e) {
+			e.printStackTrace();
 			System.err.print("Morreu" + e.getMessage());
 		}
 

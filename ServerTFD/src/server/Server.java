@@ -29,7 +29,7 @@ public class Server implements IServer {
 
 	private List<FollowerCommunication> followers = Arrays.asList(first,second,third,fourth);
 	
-	private List<Pair<String,String>> table;
+	private List<Pair<String,String>> table ;
 	
 	private int nAnswers;
 
@@ -39,7 +39,7 @@ public class Server implements IServer {
 		this.term = 0;
 		this.state = STATE.FOLLOWER;
 		this.nAnswers = 0;
-
+		this.table = new ArrayList <>();
 		log.createFile(this.port);
 	} 
 
@@ -114,45 +114,25 @@ public class Server implements IServer {
 
 				String aux = s.split(":")[0];
 				String operation = aux.split("_")[1];
-
+				
+				if(operation.compareTo("l") == 0)
+					return table.toString();
+				
 				String object = s.split("_")[1];
-				switch (operation) {
-
-				case "p":
-					Pair<String, String> p = new Pair<String, String>( object.split(":")[1], object.split(":")[2]);
-					table.add(p);
-					log.writeLog(operation +"-" + object.split(":")[1]+"-"+object.split(":")[2], this.term, false, s.split("_")[0] );
-					return "Colocado!";
-
-				case "g":
-					for ( Pair<String, String> pair  : table) {
-						if(pair.getKey().compareTo(object.split(":")[1]) == 0) {
-							return pair.getValue();
-						}
+				this.pendentEntry.add(s);
+				String ss = s.split("_")[0];
+				
+				int ret = tableManager(operation, object,ss);
+				if(operation.compareTo("g") == 0)
+					if(ret != -1) {
+						return table.get(ret).getValue();
 					}
-					
-					return "Nao existe";
-
-					
-					
-				case "d":
-					for ( Pair<String, String> pair  : table) {
-						if(pair.getKey().compareTo(object.split(":")[1]) == 0) {
-							table.remove(pair);
-						}
-					}
-					log.writeLog(operation +"-" + object.split(":")[1], this.term, false, s.split("_")[0] );
-					
-					return "Apagado!";
-					
-					
-				default:
-					break;
-				}
+						
+				return ret == 0 ? "Sucesso!" : "Falhou!";
 
 			}
-			this.pendentEntry.add(s);
-			return s.split("_")[1] ;
+			
+			
 		}
 		else {
 			//devolve porto do leader
@@ -162,6 +142,46 @@ public class Server implements IServer {
 	}
 
 
+
+	private int tableManager(String operation, String object, String s) {
+		switch (operation) {
+
+		case "p":
+			Pair<String, String> p = new Pair<String, String>( object.split(":")[1], object.split(":")[2]);
+			table.add(p);
+			return log.writeLog(operation +"-" + object.split(":")[1]+"-"+object.split(":")[2], this.term, false, s ) ? 0 : 1;
+			
+
+		case "g":
+			int i = 0;
+			for ( Pair<String, String> pair  : table) {
+				if(pair.getKey().compareTo(object.split(":")[1]) == 0) {
+					return i;
+				}
+				i++;
+			}
+			
+			return -1;
+
+			
+			
+		case "d":
+			for ( Pair<String, String> pair  : table) {
+				if(pair.getKey().compareTo(object.split(":")[1]) == 0) {
+					table.remove(pair);
+				}
+			}
+			return log.writeLog(operation +"-" + object.split(":")[1], this.term, false, s ) ? 0 : 1;
+			
+			
+			
+			
+		default:
+			return 1;
+		}
+	}
+
+	
 
 	/**
 	 * Recebe AppendEntriesRPC do Leader
@@ -189,9 +209,16 @@ public class Server implements IServer {
 				ret = 0;
 			}else {
 				System.out.println(this.port);
-
-				ret = log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ? 0 : 1 ;
-
+				String operation = entry.split(":")[1].split("-")[0];
+				
+				String object = entry.split(":")[1].replace("-", ":");
+				
+				String s = entry.split(":")[4];
+				
+				ret = tableManager(operation, object, s);
+				if(operation.compareTo("g") == 0)
+					if(ret != -1)
+						ret = 0;
 			}
 			resetTimer();
 		}
@@ -351,6 +378,10 @@ public class Server implements IServer {
 		return followers;
 	}
 
+	public void addPairTable(String key, String value) {
+		Pair<String, String> pair = new Pair<String, String>(key,value);
+		table.add(pair);
+	}
 
 
 }
