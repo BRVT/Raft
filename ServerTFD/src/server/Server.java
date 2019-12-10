@@ -2,6 +2,7 @@ package server;
 
 import java.util.*;
 import domain.LogEntry;
+import domain.TableManager;
 import enums.STATE;
 import server.constants.Constants;
 import javafx.util.Pair;
@@ -29,7 +30,7 @@ public class Server implements IServer {
 
 	private List<FollowerCommunication> followers = Arrays.asList(first,second,third,fourth);
 	
-	private List<Pair<String,String>> table ;
+	private TableManager tManager;
 	
 	private int nAnswers;
 
@@ -39,16 +40,9 @@ public class Server implements IServer {
 		this.term = 0;
 		this.state = STATE.FOLLOWER;
 		this.nAnswers = 0;
-		this.table = new ArrayList <>();
+		this.tManager = TableManager.getInstance();
 		log.createFile(this.port);
 	} 
-
-	public Server(int port, int term) {
-		this.port = port;
-		this.term = term;
-		this.state = STATE.FOLLOWER;
-		this.nAnswers = 0;
-	}
 
 	/**
 	 * Inicializa o server ---REVER---
@@ -67,7 +61,6 @@ public class Server implements IServer {
 	/**
 	 * Funcao que contem o bulk do trabalho realizado pelo Leader
 	 */
-
 	public void leaderWork() {
 
 		ArrayList<Integer> ports = new ArrayList<>();
@@ -80,11 +73,12 @@ public class Server implements IServer {
 		int j = 0;
 		for (FollowerCommunication f : followers) {
 			f = new FollowerCommunication(this,5000, false, ports.get(j));
-			System.out.println("inicio canal de comunicao com o " + ports.get(j));
+			System.out.println("Inicio canal de comunicao com o " + ports.get(j));
 			f.start();
 			j++;
 		}
-
+		
+		//verificar isto
 		while(true) {
 			synchronized (answers) {
 				if(answers.size() > 2){
@@ -111,28 +105,29 @@ public class Server implements IServer {
 	public String request(String s, int id)  {
 		if(this.isLeader()) {
 			synchronized(s){
-
+				//
 				String aux = s.split(":")[0];
+				//
 				String operation = aux.split("_")[1];
-				
-				if(operation.compareTo("l") == 0)
-					return table.toString();
-				
+				//
 				String object = s.split("_")[1];
-				this.pendentEntry.add(s);
+				//
 				String ss = s.split("_")[0];
 				
-				int ret = tableManager(operation, object,ss);
-				if(operation.compareTo("g") == 0)
-					if(ret != -1) {
-						return table.get(ret).getValue();
-					}
-						
-				return ret == 0 ? "Sucesso!" : "Falhou!";
+				
+				if(operation.compareTo("l") == 0) {
+					return tManager.toString();
+				}
+					
+				if(operation.compareTo("g") == 0) {
+					String value = tManager.getValue(object.split(":")[1]);
+					return value instanceof String ? value : "Nao existe";
+				}
+				
+				this.pendentEntry.add(s);
+				return tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
 
 			}
-			
-			
 		}
 		else {
 			//devolve porto do leader
@@ -147,37 +142,16 @@ public class Server implements IServer {
 		switch (operation) {
 
 		case "p":
-			Pair<String, String> p = new Pair<String, String>( object.split(":")[1], object.split(":")[2]);
-			table.add(p);
-			return log.writeLog(operation +"-" + object.split(":")[1]+"-"+object.split(":")[2], this.term, false, s ) ? 0 : 1;
-			
-
-		case "g":
-			int i = 0;
-			for ( Pair<String, String> pair  : table) {
-				if(pair.getKey().compareTo(object.split(":")[1]) == 0) {
-					return i;
-				}
-				i++;
-			}
-			
-			return -1;
-
-			
+			System.out.println(object);
+			tManager.putPair(object.split(":")[1], object.split(":")[2]);
+			return log.writeLog(operation +"-" + object.split(":")[1]+"-"+object.split(":")[2], this.term, false, s ) ? 0 : 1;	
 			
 		case "d":
-			for ( Pair<String, String> pair  : table) {
-				if(pair.getKey().compareTo(object.split(":")[1]) == 0) {
-					table.remove(pair);
-				}
-			}
+			tManager.removePair(object.split(":")[1]);
 			return log.writeLog(operation +"-" + object.split(":")[1], this.term, false, s ) ? 0 : 1;
 			
-			
-			
-			
 		default:
-			return 1;
+			return -1;
 		}
 	}
 
@@ -302,7 +276,6 @@ public class Server implements IServer {
 	}
 
 	public void setState(STATE state) {
-
 		this.state = state;
 	}
 
@@ -335,7 +308,6 @@ public class Server implements IServer {
 
 	public void setTerm(int term) {
 		this.term = term;
-
 	}
 
 	public int getVotedFor() {
@@ -376,11 +348,6 @@ public class Server implements IServer {
 
 	public List<FollowerCommunication> getFollowers() {
 		return followers;
-	}
-
-	public void addPairTable(String key, String value) {
-		Pair<String, String> pair = new Pair<String, String>(key,value);
-		table.add(pair);
 	}
 
 

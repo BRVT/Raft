@@ -9,22 +9,18 @@ import server.service.ServerService;
 public class ServerMain {
 
 	public static void main(String[] args) {
-		ServerService server;
-//		if(args.length != 1){
-//			System.err.println("Uso errado");
-//			System.exit(0);
-//		}
+		ServerService server = null;
+		if(args.length != 1){
+			System.err.println("Uso errado");
+			System.exit(0);
+		}
 		
 		int port = Integer.parseInt(args[0]);
 		
 		try{
-			if(args.length == 1) {
-				server = new ServerService(port);
-			}else {
-				server = new ServerService(port, Integer.parseInt(args[1]));
-			}
 			
-			
+			server = new ServerService(port);
+
 			Registry reg = LocateRegistry.createRegistry(port);
 			
 			reg.rebind(Constants.ADDRESS, server);

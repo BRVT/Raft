@@ -6,11 +6,20 @@ import java.util.List;
 import javafx.util.Pair;
 
 public class TableManager {
-
+	
+	private static TableManager singleton;
 	private List<Pair<String,String>> table ;
 	
-	public TableManager() {
+	private TableManager() {
 		this.table = new ArrayList<Pair<String , String>>();
+	}
+	
+	public static TableManager getInstance() {
+		if(singleton instanceof TableManager) {
+			return singleton;
+		}
+		singleton = new TableManager();
+		return singleton;
 		
 	}
 
@@ -23,12 +32,12 @@ public class TableManager {
 	}
 
 	public void removePair(String key) {
-		
 		for (Pair<String, String> pair : table) {
-			if(pair.getKey().equals(key)) 
-				table.remove(pair);		
+			if(pair.getKey().equals(key)) {
+				table.remove(pair);
+				return;
+			}			
 		}
-		
 	}
 	
 	public void putPair(String key, String value) {
@@ -37,6 +46,21 @@ public class TableManager {
 		table.add(auxPair);
 	}
 	
+	public List<Pair<String,String>> getList(){
+		return table;
+	}
+	
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		
+		for (Pair<String, String> pair : table) {
+			sb.append("Key: " + pair.getKey());
+			sb.append(" Value: " + pair.getValue());
+			sb.append("\n");
+		}
+		
+		return sb.toString();
+	}
 	
 
 }

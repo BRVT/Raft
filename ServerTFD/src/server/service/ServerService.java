@@ -18,10 +18,6 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 		server = new Server(port);
 	}
 	
-	public ServerService(int port, int term) throws RemoteException {
-		server = new Server(port, term);
-	}
-	
 	public String request(String s, int id) throws RemoteException{
 		return server.request(s, id);
 	}

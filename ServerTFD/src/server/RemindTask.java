@@ -36,7 +36,7 @@ class RemindTask extends TimerTask {
 	}
 
 	public void run() {
-		System.out.println("Começa eleição");
+		System.out.println("Comeca eleicao");
 
 		while(!finished) {
 			startVote();
