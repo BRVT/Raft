@@ -5,6 +5,7 @@ import java.lang.Thread.State;
 import java.util.*;
 
 import javafx.util.Pair;
+import server.FollowerCommunication;
 public class LogEntry {
 
 	//Definir o que cada LogEntry vai ter
@@ -29,7 +30,7 @@ public class LogEntry {
 	private ArrayList<Entry> entries;
 	private TableManager tManager;
 	
-	private List<Thread> followers;
+	private List<FollowerCommunication> followers;
 
 	public LogEntry() {
 		this.entries = new ArrayList<>();
@@ -67,15 +68,9 @@ public class LogEntry {
 	}
 
 	private void loadEntries() {
-
-		
 		try {
-			
 			readFromSnapshot();
-			
 			readFromLog();
-			
-			
 		} catch (NumberFormatException | IOException e) {
 
 			e.printStackTrace();
@@ -137,8 +132,12 @@ public class LogEntry {
 
 			prevLogIndex ++;
 			
-			for (Thread t : followers) {
-				if(t.getState() == State.TIMED_WAITING) t.interrupt();
+			if(followers instanceof List<?>) {
+				for (Thread t : followers) {
+					if(t instanceof FollowerCommunication)
+						if(t.getState() == State.TIMED_WAITING) 
+							t.interrupt(); //supostamente acorda quando ha algo novo
+				}
 			}
 			
 			try {
@@ -339,7 +338,7 @@ public class LogEntry {
 		
 	}
 	
-	public void setFollowerThreads(List<Thread> f) {
-		this.followers = f;
+	public void setFollowerThreads(List<FollowerCommunication> followers2) {
+		this.followers = followers2;
 	}
 }

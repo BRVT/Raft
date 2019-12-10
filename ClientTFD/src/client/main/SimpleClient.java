@@ -1,6 +1,7 @@
 package client.main;
 
 import java.rmi.NotBoundException;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -23,14 +24,21 @@ public class SimpleClient {
 			//escolher porto random
 			Random r = new Random();
 
-			int index = r.nextInt(5);
+			
 
 			int[] ports = {1234,1235,1236,1237,1238};
 
-
-			simple = locateAux(ports[index], "rmi://localhost/server");
-
-
+			boolean connected = false;
+			//vai-se tentar conectar a outro se nao houver nenhum online
+			while(!connected) {
+				int index = r.nextInt(5);
+				simple = locateAux(ports[index], "rmi://localhost/server");
+				
+				if(simple instanceof Remote) {
+					connected = true;
+				}
+			}
+			
 			Scanner s = new Scanner(System.in);
 
 			System.out.println("Insira String: ");
@@ -91,9 +99,14 @@ public class SimpleClient {
 		}
 	}
 
-	public static IServerService locateAux(int port, String name) throws RemoteException, NotBoundException {
-		Registry reg = LocateRegistry.getRegistry(port);
-		return (IServerService) reg.lookup(name);
+	public static IServerService locateAux(int port, String name) {
+		try {
+			Registry reg = LocateRegistry.getRegistry(port);
+			return (IServerService) reg.lookup(name);
+		}catch ( RemoteException | NotBoundException e) {
+			return null;
+		}
+		
 	}
 
 	public static void doRequest(String input, int id) {

@@ -15,7 +15,7 @@ import server.service.IServerService;
 /**
  * Para o leader comunicar com os followers
  */
-class FollowerCommunication extends Thread { 
+public class FollowerCommunication extends Thread { 
 	//dealy que vai ser para retentar comunicao
 	private int delay; 
 	private Registry r;
@@ -56,7 +56,11 @@ class FollowerCommunication extends Thread {
 						connect();
 					}
 					
-					Thread.sleep(1000);
+					
+						System.out.println("vou dormir");
+						Thread.sleep(5000);
+						System.out.println("acordei");
+					
 					Entry e = log.getLastEntry();
 
 

@@ -78,6 +78,8 @@ public class Server implements IServer {
 			j++;
 		}
 		
+		log.setFollowerThreads(followers);
+		
 		//verificar isto
 		while(true) {
 			synchronized (answers) {
