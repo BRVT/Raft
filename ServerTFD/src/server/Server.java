@@ -1,11 +1,17 @@
 package server;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Timer;
+
 import domain.LogEntry;
 import domain.TableManager;
 import enums.STATE;
 import server.constants.Constants;
-import javafx.util.Pair;
 
 public class Server implements IServer {
 
@@ -20,8 +26,9 @@ public class Server implements IServer {
 
 	private ArrayList<String> pendentEntry = new ArrayList<>();
 	private LogEntry log = new LogEntry();
-	private Map<Integer, Integer> answers = new HashMap<>();
+	//private Map<Integer, Pair<Integer,Integer>> answers = new HashMap<>();
 
+	private List<List<Integer>> answers = new ArrayList<>();
 	private Map<Integer, Integer> votes = new HashMap<>();
 	private FollowerCommunication first;
 	private FollowerCommunication second;
@@ -42,6 +49,11 @@ public class Server implements IServer {
 		this.nAnswers = 0;
 		this.tManager = TableManager.getInstance();
 		log.createFile(this.port);
+		int i = 0;
+		while(i < log.getEntriesSize()) {
+			answers.add(new ArrayList<>());
+			i ++;
+		}
 	} 
 
 	/**
@@ -80,23 +92,8 @@ public class Server implements IServer {
 		
 		log.setFollowerThreads(followers);
 		
-		//verificar isto
-		while(true) {
-			synchronized (answers) {
-				if(answers.size() > 2){
-					int count = 0;
-					for (Integer i : answers.values()) {
-						if(i == 0) 
-							count ++;
-					}
-					if(count >= 2) {
-						log.commitEntry();
-					}
-
-					answers = new HashMap<>();
-				}
-			}
-		}
+		
+		
 	}
 
 	/**
@@ -106,6 +103,7 @@ public class Server implements IServer {
 	 */
 	public String request(String s, int id)  {
 		if(this.isLeader()) {
+			answers.add(new ArrayList<>());
 			synchronized(s){
 				//
 				String aux = s.split(":")[0];
@@ -220,7 +218,12 @@ public class Server implements IServer {
 
 			return 0;
 		}
-
+		
+		else if(prevLogTerm == log.getPrevLogTerm() && prevLogIndex > log.getPrevLogIndex()) {
+			return this.term;
+		}
+		
+		
 		else if (votedFor != 0) {
 
 			System.out.println("nega voto");
@@ -324,10 +327,12 @@ public class Server implements IServer {
 		this.timer.cancel();
 	}
 
+	public int getnAnswers(int index) {
+		return answers.get(index).size();
+	}
 	public int getnAnswers() {
 		return nAnswers;
 	}
-
 	public void setnAnswers(int nAnswers) {
 		this.nAnswers = nAnswers;
 	}
@@ -340,16 +345,26 @@ public class Server implements IServer {
 		return this.log;
 	}
 
-	public Map<Integer, Integer> getAnswers() {
+	public List<List<Integer>> getAnswers() {
 		return answers;
 	}
 
-	public void addAnswers(int id, int flag) {
-		this.answers.put(id, flag);
+	public void addAnswers(int index,int flag) {
+		this.answers.get(index).add(flag);
 	}
 
 	public List<FollowerCommunication> getFollowers() {
 		return followers;
+	}
+
+	public int addNewEntry() {
+		answers.add(new ArrayList<Integer>());
+		return answers.size()-1;
+	}
+
+	public void commitEntryRPC(int commitIndex) {
+		log.commitEntry(commitIndex);
+		
 	}
 
 

@@ -22,29 +22,18 @@ public class SimpleClient {
 
 		try {
 			//escolher porto random
-			Random r = new Random();
-
 			
 
-			int[] ports = {1234,1235,1236,1237,1238};
-
-			boolean connected = false;
+			tryConnect(false);
 			//vai-se tentar conectar a outro se nao houver nenhum online
-			while(!connected) {
-				int index = r.nextInt(5);
-				simple = locateAux(ports[index], "rmi://localhost/server");
-				
-				if(simple instanceof Remote) {
-					connected = true;
-				}
-			}
+			
 			
 			Scanner s = new Scanner(System.in);
 
 			System.out.println("Insira String: ");
 			String request = s.nextLine();
 			int id = 0;			
-			String operation = "";
+			String operation;
 			while(!request.equals("quit")) {
 
 				switch ( operation = request.split(" ")[0]) {
@@ -108,26 +97,45 @@ public class SimpleClient {
 		}
 		
 	}
-
+	public static boolean tryConnect(boolean connected) {
+		Random r = new Random();
+		int[] ports = {1234,1235,1236,1237,1238};
+		
+		while(!connected) {
+			int index = r.nextInt(5);
+			simple = locateAux(ports[index], "rmi://localhost/server");
+			
+			if(simple instanceof Remote) {
+				connected = true;
+			}
+		}
+		return connected;
+	}
 	public static void doRequest(String input, int id) {
 		String teste = uniqueID+"|"+ id + "_" + input;
 
 		try {
+			
 			String reply = simple.request(teste,id);
+			
 			String[] array = reply.split(" ");
 			if(array[0].equals(folRes)) {
-
-
+				
 				simple = locateAux(Integer.parseInt(array[1]), "rmi://localhost/server");
-
+				
 				reply = simple.request(teste, id);
 			}
-
+			
+			
 			System.out.println("Resposta : \n"+reply);
 
 		}catch(Exception e) {
-			e.printStackTrace();
-			System.err.print("Morreu" + e.getMessage());
+			System.err.print("Morreu " + e.getMessage());
+			
+			tryConnect(false);
+			doRequest(input, id);
+			
+			
 		}
 
 

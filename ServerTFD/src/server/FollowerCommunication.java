@@ -5,6 +5,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.List;
 
 import domain.LogEntry;
 import domain.LogEntry.Entry;
@@ -67,29 +68,51 @@ public class FollowerCommunication extends Thread {
 					if( e == (null) || e.equals(lastEntry) ){
 						verify = sendHeartBeat(iServer, null, 0);
 					}else {
+						int index;
+						synchronized(server.getAnswers()) {
+							index = server.getAnswers().size() - 1;
+						}
 						System.out.println("Veio entry " + e.toString());
 						ArrayList <Entry> array = log.getLastEntriesSince(lastEntry);
 						for (Entry entry : array) {
 
 							verify = sendHeartBeat(iServer, entry.toString(), 0);
 						}
-
-						synchronized(server.getAnswers()) {
+						
+						
+						synchronized(server.getAnswers().get(index)) {
 							
-							server.addAnswers(portF, verify);
-							server.incrementNAnswers();
+							
+							server.addAnswers(index, verify);
+							
+							
 
-							if(server.getnAnswers() < 3) {
+							if(server.getnAnswers(index) < 3) {
 								try {
-									server.getAnswers().wait(8000);
-									server.setnAnswers(0);
+									server.getAnswers().get(index).wait(8000);
+									
 								}catch (IllegalMonitorStateException i) {
 
 								}
 							}else {
-								server.setnAnswers(0);
-								server.getAnswers().notifyAll();
+								int count = 0;
+								
+									for (Integer integer : server.getAnswers().get(index)) {
+										if(integer == 0)
+											count ++;
+									}
+									if(count >= 2) {
+										log.commitEntry(log.getCommitIndex()+1);
+										
+										
+										
+									}
+									count = 0;
+								
+								
+								server.getAnswers().get(index).notifyAll();
 							}
+							sendCommitMessage(iServer, log.getCommitIndex());
 						}
 						this.lastEntry = e;
 					}
@@ -123,6 +146,20 @@ public class FollowerCommunication extends Thread {
 		catch (InterruptedException e){ 
 			e.printStackTrace(); 
 		} 
+	}
+
+	private void sendCommitMessage(IServerService iServer2, int commitIndex) {
+		
+		try {
+			
+			iServer2.commitEntryRPC(commitIndex);
+
+				
+
+		} catch (RemoteException e) {
+		
+		}
+		
 	}
 
 	public void connect() {

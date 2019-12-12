@@ -1,8 +1,15 @@
 package domain;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.Thread.State;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import javafx.util.Pair;
 import server.FollowerCommunication;
@@ -19,7 +26,7 @@ public class LogEntry {
 	private File s;
 	private File dir;
 
-	private int leaderID;
+	
 	private int prevLogIndex;
 	private int prevLogTerm;
 	private int commitIndex;
@@ -102,6 +109,7 @@ public class LogEntry {
 			Entry e = Entry.setEntry(st);
 			entries.add(e);
 			if(e.isComitted()) {
+				
 				this.commitIndex ++;
 			}
 			String[] stArr = st.split(":")[1].split("-");
@@ -131,7 +139,7 @@ public class LogEntry {
 			}
 
 			prevLogIndex ++;
-			
+			prevLogTerm = lastEntry.term;
 			if(followers instanceof List<?>) {
 				for (Thread t : followers) {
 					if(t instanceof FollowerCommunication)
@@ -148,6 +156,7 @@ public class LogEntry {
 				
 				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 				writer.write(lastEntry.toString());
+				
 				writer.newLine();
 				writer.close();
 
@@ -234,6 +243,10 @@ public class LogEntry {
 		public String getClientIDCommand() {
 			return clientIDCommand;
 		}
+		
+		public int getIndex() {
+			return index;
+		}
 		@Override
 		public boolean equals(Object obj) {
 			if (this == obj)
@@ -268,17 +281,47 @@ public class LogEntry {
 		public void setCommitted() {
 			this.commited = true;
 
-			// temos que ir ao log mudar isto pah!!!!!!
+			
 		}
 
 	}
 	
-	//TEMOS DE FAZER ISTO lmao
-	public void commitEntry() { 
-		//TODO
-		commitIndex ++;
-
-		System.out.println("ESTA COMITADO");
+	
+	public void commitEntry(int i) { 
+		
+		
+		String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
+		String logFile = dire + BAR + "log_" + String.valueOf(port)+".txt";
+		entries.get(i).setCommitted();
+		synchronized (f) {
+			f.delete();
+			
+			
+			f = new File(logFile);
+			try {
+				
+				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
+				int j = 0;
+				for (Entry entry : entries) {
+					if(j < i && !entry.commited)
+						entry.setCommitted();
+					System.out.println(entry.toString());
+					writer.write(entry.toString());
+					writer.newLine();
+					j ++;
+				}
+				writer.close();
+				
+				f.createNewFile();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
+		
+		commitIndex++;
+		
 	}
 
 	public int getPrevLogTerm() {
@@ -340,5 +383,9 @@ public class LogEntry {
 	
 	public void setFollowerThreads(List<FollowerCommunication> followers2) {
 		this.followers = followers2;
+	}
+	
+	public int getEntriesSize() {
+		return entries.size();
 	}
 }

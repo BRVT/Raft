@@ -42,8 +42,16 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 		return server.getPrevLogIndex();
 	}
 	
+	
+	
 	public void run() {
 		server.run();
+	}
+
+	@Override
+	public void commitEntryRPC(int commitIndex) throws RemoteException {
+		server.commitEntryRPC(commitIndex);
+		
 	}
 
 	
