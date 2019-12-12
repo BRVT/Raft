@@ -15,7 +15,7 @@ import server.service.IServerService;
 /**
  * Para o leader comunicar com os followers
  */
-class FollowerCommunication extends Thread { 
+public class FollowerCommunication extends Thread { 
 	//dealy que vai ser para retentar comunicao
 	private int delay; 
 	private Registry r;
@@ -55,7 +55,12 @@ class FollowerCommunication extends Thread {
 						Thread.sleep(delay); 
 						connect();
 					}
-					Thread.sleep(1000);
+					
+					
+						System.out.println("vou dormir");
+						Thread.sleep(5000);
+						System.out.println("acordei");
+					
 					Entry e = log.getLastEntry();
 
 
@@ -69,11 +74,8 @@ class FollowerCommunication extends Thread {
 							verify = sendHeartBeat(iServer, entry.toString(), 0);
 						}
 
-						//Verificar isto!
-						//O verify nao verifica todas as entries enviadas
-						//Ex: a Entry 1 da verify 1 (erro) e a entry 2 dah fixe, logo dah commit ah 1 na mesma?
 						synchronized(server.getAnswers()) {
-							//System.out.println(nAnswers + " <------------");
+							
 							server.addAnswers(portF, verify);
 							server.incrementNAnswers();
 
@@ -103,12 +105,12 @@ class FollowerCommunication extends Thread {
 						server.incrementNAnswers();
 
 						if(server.getnAnswers() < 3) {
-							System.out.println("esperou : " + server.getnAnswers()) ;
+							System.out.println("Esperou : " + server.getnAnswers()) ;
 							server.getVotes().wait(8000);
 
 							server.setnAnswers(0);
 						}else {
-							System.out.println("deu unlock");
+							System.out.println("Deu unlock");
 							server.getVotes().notifyAll();
 							server.setnAnswers(0);
 							forElection = false;

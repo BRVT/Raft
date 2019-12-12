@@ -2,17 +2,20 @@ package server;
 
 import java.util.*;
 import domain.LogEntry;
+import domain.TableManager;
 import enums.STATE;
 import server.constants.Constants;
+import javafx.util.Pair;
 
 public class Server implements IServer {
-	
+
 	private int port;
+	
 	private int leaderPort;
 	private STATE state;
 	private int term;
 	private int votedFor;
-	
+
 	private Timer timer;
 
 	private ArrayList<String> pendentEntry = new ArrayList<>();
@@ -26,7 +29,9 @@ public class Server implements IServer {
 	private FollowerCommunication fourth;
 
 	private List<FollowerCommunication> followers = Arrays.asList(first,second,third,fourth);
-
+	
+	private TableManager tManager;
+	
 	private int nAnswers;
 
 	public Server(int port){
@@ -35,16 +40,9 @@ public class Server implements IServer {
 		this.term = 0;
 		this.state = STATE.FOLLOWER;
 		this.nAnswers = 0;
-
+		this.tManager = TableManager.getInstance();
 		log.createFile(this.port);
 	} 
-	
-	public Server(int port, int term) {
-		this.port = port;
-		this.term = term;
-		this.state = STATE.FOLLOWER;
-		this.nAnswers = 0;
-	}
 
 	/**
 	 * Inicializa o server ---REVER---
@@ -63,7 +61,6 @@ public class Server implements IServer {
 	/**
 	 * Funcao que contem o bulk do trabalho realizado pelo Leader
 	 */
-	
 	public void leaderWork() {
 
 		ArrayList<Integer> ports = new ArrayList<>();
@@ -76,11 +73,14 @@ public class Server implements IServer {
 		int j = 0;
 		for (FollowerCommunication f : followers) {
 			f = new FollowerCommunication(this,5000, false, ports.get(j));
-			System.out.println("inicio canal de comunicao com o " + ports.get(j));
+			System.out.println("Inicio canal de comunicao com o " + ports.get(j));
 			f.start();
 			j++;
 		}
-
+		
+		log.setFollowerThreads(followers);
+		
+		//verificar isto
 		while(true) {
 			synchronized (answers) {
 				if(answers.size() > 2){
@@ -107,16 +107,54 @@ public class Server implements IServer {
 	public String request(String s, int id)  {
 		if(this.isLeader()) {
 			synchronized(s){
-				log.writeLog(s.split("_")[1] , this.term, false, s.split("_")[0] );
+				//
+				String aux = s.split(":")[0];
+				//
+				String operation = aux.split("_")[1];
+				//
+				String object = s.split("_")[1];
+				//
+				String ss = s.split("_")[0];
+				
+				
+				if(operation.compareTo("l") == 0) {
+					return tManager.toString();
+				}
+					
+				if(operation.compareTo("g") == 0) {
+					String value = tManager.getValue(object.split(":")[1]);
+					return value instanceof String ? value : "Nao existe";
+				}
+				
+				this.pendentEntry.add(s);
+				return tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
+
 			}
-			this.pendentEntry.add(s);
-			return s.split("_")[1] ;
 		}
 		else {
 			//devolve porto do leader
 			return "& " + String.valueOf(leaderPort);
 		}
 
+	}
+
+
+
+	private int tableManager(String operation, String object, String s) {
+		switch (operation) {
+
+		case "p":
+			System.out.println(object);
+			tManager.putPair(object.split(":")[1], object.split(":")[2]);
+			return log.writeLog(operation +"-" + object.split(":")[1]+"-"+object.split(":")[2], this.term, false, s ) ? 0 : 1;	
+			
+		case "d":
+			tManager.removePair(object.split(":")[1]);
+			return log.writeLog(operation +"-" + object.split(":")[1], this.term, false, s ) ? 0 : 1;
+			
+		default:
+			return -1;
+		}
 	}
 
 	
@@ -132,12 +170,12 @@ public class Server implements IServer {
 	 * @return true se tudo correu bem || false se ocorreu uma falha
 	 */
 	public int receiveAppendEntry(int term, int leaderID, int prevLogIndex, int prevLogTerm, String entry, int leaderCommit) {
-		
+
 		System.out.println("Recebi heartbeat " + term +" | " + leaderID);
 		int ret = -1;
 		if(term < this.getTerm()) {
 			ret = this.getTerm();
-			
+
 		}else {
 			this.state = STATE.FOLLOWER;
 			timer.cancel();
@@ -147,9 +185,16 @@ public class Server implements IServer {
 				ret = 0;
 			}else {
 				System.out.println(this.port);
+				String operation = entry.split(":")[1].split("-")[0];
 				
-				ret = log.writeLog(entry.split(":")[1] , this.term, false, entry.split(":")[4] ) ? 0 : 1 ;
+				String object = entry.split(":")[1].replace("-", ":");
 				
+				String s = entry.split(":")[4];
+				
+				ret = tableManager(operation, object, s);
+				if(operation.compareTo("g") == 0)
+					if(ret != -1)
+						ret = 0;
 			}
 			resetTimer();
 		}
@@ -166,27 +211,27 @@ public class Server implements IServer {
 	 */
 
 	public int receiveRequestVote(int term, int id, int prevLogIndex, int prevLogTerm) {
-		
+
 		if(this.term < term) {
 			votedFor = id;
 			this.term = term;
 			this.state = STATE.FOLLOWER;
 			resetTimer();
-			
+
 			return 0;
 		}
-		
+
 		else if (votedFor != 0) {
-			
+
 			System.out.println("nega voto");
 			resetTimer();
 			return -1;
 		}
 		else if (this.term > term) {
-			
+
 			return this.term;
 		}
-		
+
 		else {
 			votedFor = id;
 			this.term = term;
@@ -208,10 +253,10 @@ public class Server implements IServer {
 		timer = new Timer();
 		timer.schedule(new RemindTask(this), i*10000 + e*1000);
 	}
-	
 
-///// getter e setters 
-	
+
+	///// getter e setters 
+
 	public void setVoteFor(int id) {
 		this.votedFor = id;
 	}
@@ -219,21 +264,20 @@ public class Server implements IServer {
 	public void cleanVote() {
 		this.votedFor = 0;
 	}
-	
+
 	public void addVote(int porto,int flag){
 		votes.put(porto, flag);
 	}
-	
+
 	public Map<Integer, Integer> getVotes(){
 		return this.votes;
 	}
-	
+
 	public void resetVotes(){
 		this.votes = new HashMap<>();
 	}
 
 	public void setState(STATE state) {
-
 		this.state = state;
 	}
 
@@ -266,7 +310,6 @@ public class Server implements IServer {
 
 	public void setTerm(int term) {
 		this.term = term;
-
 	}
 
 	public int getVotedFor() {
@@ -276,7 +319,7 @@ public class Server implements IServer {
 	public boolean isLeader() {
 		return this.state.equals(STATE.LEADER);
 	}
-	
+
 	public void cancelTimer(){
 		this.timer.cancel();
 	}
@@ -288,15 +331,15 @@ public class Server implements IServer {
 	public void setnAnswers(int nAnswers) {
 		this.nAnswers = nAnswers;
 	}
-	
+
 	public void incrementNAnswers(){
 		this.nAnswers++;
 	}
-	
+
 	public LogEntry getLog(){
 		return this.log;
 	}
-	
+
 	public Map<Integer, Integer> getAnswers() {
 		return answers;
 	}
@@ -304,11 +347,10 @@ public class Server implements IServer {
 	public void addAnswers(int id, int flag) {
 		this.answers.put(id, flag);
 	}
-	
+
 	public List<FollowerCommunication> getFollowers() {
 		return followers;
 	}
-	
-	
+
 
 }

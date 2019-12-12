@@ -1,7 +1,11 @@
 package domain;
 
 import java.io.*;
+import java.lang.Thread.State;
 import java.util.*;
+
+import javafx.util.Pair;
+import server.FollowerCommunication;
 public class LogEntry {
 
 	//Definir o que cada LogEntry vai ter
@@ -12,39 +16,48 @@ public class LogEntry {
 	private static final String BAR = System.getProperty("file.separator");
 
 	private File f;
+	private File s;
 	private File dir;
 
 	private int leaderID;
 	private int prevLogIndex;
 	private int prevLogTerm;
 	private int commitIndex;
+	private int port;
 
 	private Entry lastEntry;
 
 	private ArrayList<Entry> entries;
-
+	private TableManager tManager;
+	
+	private List<FollowerCommunication> followers;
 
 	public LogEntry() {
 		this.entries = new ArrayList<>();
 		this.prevLogIndex = 0;
 		this.commitIndex = -1;
 		this.lastEntry = null;
+		tManager = TableManager.getInstance();
 	}
 
 	public void createFile(int port) {
+		this.port = port;
 		String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
-		String file = dire + BAR + "log_" + String.valueOf(port)+".txt";
+		String logFile = dire + BAR + "log_" + String.valueOf(port)+".txt";
+		String snapshotFile = dire + BAR + "snapshot_" + String.valueOf(port)+".txt";
 		// Use relative path for Unix systems
 
 
 		this.dir = new File(dire);
-		this.f = new File(file);
+		this.f = new File(logFile);
+		this.s = new File(snapshotFile);
 		if(!dir.exists()) {
 
 			dir.mkdir();
 
 			try {
 				f.createNewFile();
+				s.createNewFile();
 			} catch (IOException e) {
 
 				e.printStackTrace();
@@ -55,31 +68,56 @@ public class LogEntry {
 	}
 
 	private void loadEntries() {
-
-		FileInputStream fis;
 		try {
-			fis = new FileInputStream(f);
-			BufferedReader br = new BufferedReader(new InputStreamReader(fis));
-
-			String st = ""; 
-
-			while ((st = br.readLine()) != null) {
-				Entry e = Entry.setEntry(st);
-				entries.add(e);
-				if(e.isComitted()) {
-					this.commitIndex ++;
-				}
-				prevLogIndex ++;
-
-			}
-			br.close();
+			readFromSnapshot();
+			readFromLog();
 		} catch (NumberFormatException | IOException e) {
 
 			e.printStackTrace();
 		} 
 	}
+	
+	private void readFromSnapshot() throws IOException {
+		String st = ""; 
+		
+		//reads from snapshot
+		FileInputStream fis = new FileInputStream(s);
+		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+		
+		while ((st = br.readLine()) != null) {
+			String[] stArr = st.split("-");
+			tManager.putPair(stArr[0], stArr[0]);
+		}
+		br.close();
+	}
+	
+	private void readFromLog() throws IOException {
+		String st = ""; 
+		
+		//reads from snapshot
+		FileInputStream fis = new FileInputStream(f);
+		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 
+		while ((st = br.readLine()) != null) {
+			Entry e = Entry.setEntry(st);
+			entries.add(e);
+			if(e.isComitted()) {
+				this.commitIndex ++;
+			}
+			String[] stArr = st.split(":")[1].split("-");
+			
+			if(stArr.length == 2) {//remove
+				tManager.removePair(stArr[1]);
+			}else 
+				if(stArr.length == 3) {//put
+					tManager.putPair(stArr[1], stArr[2]);
+				}
+			prevLogIndex ++;
 
+		}
+		br.close();
+	}
+	
 	public boolean writeLog(String command, int term, boolean commited, String id_command) {
 
 		Entry aux = new Entry(prevLogIndex,command,term,commited,id_command);
@@ -94,7 +132,20 @@ public class LogEntry {
 
 			prevLogIndex ++;
 			
+			if(followers instanceof List<?>) {
+				for (Thread t : followers) {
+					if(t instanceof FollowerCommunication)
+						if(t.getState() == State.TIMED_WAITING) 
+							t.interrupt(); //supostamente acorda quando ha algo novo
+				}
+			}
+			
 			try {
+				if(f.length() > 300) {
+					generateSnapshot();
+					clearLogFile();
+				}
+				
 				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 				writer.write(lastEntry.toString());
 				writer.newLine();
@@ -105,11 +156,48 @@ public class LogEntry {
 			} catch (IOException e) {
 				return false;
 			}
-
 		}
-
 	}
 
+	private void generateSnapshot() throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(s,true));
+		
+		List<Pair<String,String>> table = tManager.getList();
+		
+		for (Pair<String, String> pair : table) {
+			writer.write(pair.getKey() + "-" + pair.getValue());
+			writer.newLine();
+		}
+		
+		writer.close();
+	}
+
+	private void clearLogFile() throws IOException {
+		synchronized (f) { //locks log file
+			
+			String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
+			String logFileCopy = dire + BAR + "log_" + String.valueOf(port)+".txt"; //file path, n sei se tem de ser diferente
+			
+			File logCopy = new File(logFileCopy);
+			
+			BufferedWriter writer = new BufferedWriter(new FileWriter(logCopy,false));
+		
+			//Assumindo que o que estah no ficheiro log = array entries
+			
+			for (Entry entry : entries) {
+				if(!entry.isComitted()) { //se ja tiver committed, ja foi para o snapshot, logo pode-se remover
+					writer.write(entry.toString());
+				}
+			}
+			
+			//overwrites the old file for the new one
+			f.delete();
+			f = logCopy;
+			
+			f.createNewFile();
+			
+		}
+	}
 
 	public static class Entry{
 		private int index;
@@ -184,9 +272,9 @@ public class LogEntry {
 		}
 
 	}
-
 	
-	public void commitEntry() {
+	//TEMOS DE FAZER ISTO lmao
+	public void commitEntry() { 
 		//TODO
 		commitIndex ++;
 
@@ -240,4 +328,17 @@ public class LogEntry {
 		return array;
 	}
 
+	public String getEntry(String string) {
+		for (Entry entry : entries) {
+			if(entry.command.split("-")[1].compareTo(string) == 0) {
+				return entry.command.split("-")[2];
+			}
+		}
+		return null;
+		
+	}
+	
+	public void setFollowerThreads(List<FollowerCommunication> followers2) {
+		this.followers = followers2;
+	}
 }
