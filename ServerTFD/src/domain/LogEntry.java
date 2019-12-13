@@ -154,7 +154,7 @@ public class LogEntry {
 					generateSnapshot();
 					clearLogFile();
 				}
-				System.out.println(lastEntry.toString() + " <-------------------------------");
+				//System.out.println(lastEntry.toString() + " <-------------------------------");
 				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 				writer.write(lastEntry.toString());
 				

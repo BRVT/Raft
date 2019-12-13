@@ -128,10 +128,12 @@ public class Server implements IServer {
 				}
 				
 				this.pendentEntry.add(s);
-				int i = log.getCommitIndex();
-				
-				return tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
-
+				String result = "Falhou!";
+				while(!readyToAnswer) {
+					result = tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
+				}
+				readyToAnswer = false;
+				return  result;	
 			}
 		}
 		else {
@@ -147,7 +149,7 @@ public class Server implements IServer {
 		switch (operation) {
 
 		case "p":
-			System.out.println(object);
+			//System.out.println(object);
 			tManager.putPair(object.split(":")[1], object.split(":")[2]);
 			return log.writeLog(operation +"-" + object.split(":")[1]+"-"+object.split(":")[2], this.term, false, s ) ? 0 : 1;	
 			

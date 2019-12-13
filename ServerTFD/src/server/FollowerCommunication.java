@@ -103,7 +103,8 @@ public class FollowerCommunication extends Thread {
 									}
 									if(count >= 2) {
 										log.commitEntry(log.getCommitIndex()+1);
-										
+										server.answerReady(true);
+										System.out.println("CCCCOOOOOMMIIIITTADO");
 									} 
 									count = 0;
 								
