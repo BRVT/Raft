@@ -1,5 +1,6 @@
 package server;
 
+import java.lang.Thread.State;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -7,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Timer;
+
+import javax.naming.spi.ResolveResult;
 
 import domain.LogEntry;
 import domain.TableManager;
@@ -16,14 +19,15 @@ import server.constants.Constants;
 public class Server implements IServer {
 
 	private int port;
-	
+
 	private int leaderPort;
 	private STATE state;
 	private int term;
 	private int votedFor;
-	
+
 	private boolean readyToAnswer;
 	private Timer timer;
+
 
 	private ArrayList<String> pendentEntry = new ArrayList<>();
 	private LogEntry log = new LogEntry();
@@ -36,10 +40,12 @@ public class Server implements IServer {
 	private FollowerCommunication third;
 	private FollowerCommunication fourth;
 
+	private String result = null;
+
 	private List<FollowerCommunication> followers = Arrays.asList(first,second,third,fourth);
-	
+
 	private TableManager tManager;
-	
+
 	private int nAnswers;
 
 	public Server(int port){
@@ -91,11 +97,11 @@ public class Server implements IServer {
 			f.start();
 			j++;
 		}
-		
+
 		log.setFollowerThreads(followers);
-		
-		
-		
+
+
+
 	}
 
 	/**
@@ -106,36 +112,40 @@ public class Server implements IServer {
 	public String request(String s, int id)  {
 		if(this.isLeader()) {
 			answers.add(new ArrayList<>());
-			synchronized(s){
-				
-				//
-				String aux = s.split(":")[0];
-				//
-				String operation = aux.split("_")[1];
-				//
-				String object = s.split("_")[1];
-				//
-				String ss = s.split("_")[0];
-				
-				
-				if(operation.compareTo("l") == 0) {
-					return tManager.toString();
-				}
-					
-				if(operation.compareTo("g") == 0) {
-					String value = tManager.getValue(object.split(":")[1]);
-					return value instanceof String ? value : "Nao existe";
-				}
-				
-				this.pendentEntry.add(s);
-				String result = "Falhou!";
-				while(!readyToAnswer) {
-					result = tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
-				}
-				readyToAnswer = false;
-				return  result;	
+
+			result = null;
+
+
+
+
+			int cIndex = log.getCommitIndex();
+			//
+			String aux = s.split(":")[0];
+			//
+			String operation = aux.split("_")[1];
+			//
+			String object = s.split("_")[1];
+			//
+			String ss = s.split("_")[0];
+
+
+			if(operation.compareTo("l") == 0) {
+				return tManager.toString();
 			}
+
+			if(operation.compareTo("g") == 0) {
+				String value = tManager.getValue(object.split(":")[1]);
+				return value instanceof String ? value : "Nao existe";
+			}
+
+
+			this.pendentEntry.add(s);
+			result = tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
+			
+			
+			return result;
 		}
+
 		else {
 			//devolve porto do leader
 			return "& " + String.valueOf(leaderPort);
@@ -149,20 +159,17 @@ public class Server implements IServer {
 		switch (operation) {
 
 		case "p":
-			//System.out.println(object);
-			tManager.putPair(object.split(":")[1], object.split(":")[2]);
 			return log.writeLog(operation +"-" + object.split(":")[1]+"-"+object.split(":")[2], this.term, false, s ) ? 0 : 1;	
-			
+
 		case "d":
-			tManager.removePair(object.split(":")[1]);
 			return log.writeLog(operation +"-" + object.split(":")[1], this.term, false, s ) ? 0 : 1;
-			
+
 		default:
 			return -1;
 		}
 	}
 
-	
+
 
 	/**
 	 * Recebe AppendEntriesRPC do Leader
@@ -186,27 +193,27 @@ public class Server implements IServer {
 			timer.cancel();
 			this.leaderPort = leaderID;
 			if(leaderPort == votedFor) votedFor = 0;
-			
+
 			if(leaderCommit > log.getCommitIndex()) {
 				log.commitEntry(leaderCommit);
 			}
-			
+
 			if(entry == null) { 
 				ret = 0;
 			}else {
 				System.out.println(this.port);
 				String operation = entry.split(":")[1].split("-")[0];
-				
+
 				String object = entry.split(":")[1].replace("-", ":");
-				
+
 				String s = entry.split(":")[4];
-				
+
 				ret = tableManager(operation, object, s);
 				if(operation.compareTo("g") == 0)
 					if(ret != -1)
 						ret = 0;
-				
-				
+
+
 			}
 			resetTimer();
 		}
@@ -232,12 +239,12 @@ public class Server implements IServer {
 
 			return 0;
 		}
-		
+
 		else if(prevLogTerm == log.getPrevLogTerm() && prevLogIndex > log.getPrevLogIndex()) {
 			return this.term;
 		}
-		
-		
+
+
 		else if (votedFor != 0) {
 
 			System.out.println("nega voto");
@@ -378,10 +385,14 @@ public class Server implements IServer {
 
 	public void answerReady(boolean b) {
 		readyToAnswer = b;
-		
+
 	}
 
-	
+	public boolean getAnReady() {
+		return readyToAnswer;
+	}
+
+
 
 
 }

@@ -150,14 +150,15 @@ public class LogEntry {
 			}
 			
 			try {
-				if(f.length() > 300) {
+				if(f.length() > 100) {
 					generateSnapshot();
 					clearLogFile();
+					System.out.println("tou aqui " + f.length());
 				}
+				
 				//System.out.println(lastEntry.toString() + " <-------------------------------");
 				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 				writer.write(lastEntry.toString());
-				
 				writer.newLine();
 				writer.close();
 
@@ -170,7 +171,9 @@ public class LogEntry {
 	}
 
 	private void generateSnapshot() throws IOException {
-		BufferedWriter writer = new BufferedWriter(new FileWriter(s,true));
+		
+		
+		BufferedWriter writer = new BufferedWriter(new FileWriter(s,false));
 		
 		List<Pair<String,String>> table = tManager.getList();
 		
@@ -185,27 +188,24 @@ public class LogEntry {
 	private void clearLogFile() throws IOException {
 		synchronized (f) { //locks log file
 			
-			String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
-			String logFileCopy = dire + BAR + "log_" + String.valueOf(port)+".txt"; //file path, n sei se tem de ser diferente
+			FileWriter memes = new FileWriter(f,false);
+			memes.write("");
+			memes.close();
 			
-			File logCopy = new File(logFileCopy);
 			
-			BufferedWriter writer = new BufferedWriter(new FileWriter(logCopy,false));
+			BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 		
 			//Assumindo que o que estah no ficheiro log = array entries
 			
 			for (Entry entry : entries) {
 				if(!entry.isComitted()) { //se ja tiver committed, ja foi para o snapshot, logo pode-se remover
+					System.out.println("to commit" + entry);
 					writer.write(entry.toString());
+					writer.newLine();
 				}
 			}
 			
-			//overwrites the old file for the new one
-			f.delete();
-			f = logCopy;
-			
-			f.createNewFile();
-			
+			writer.close();
 		}
 	}
 
@@ -276,24 +276,26 @@ public class LogEntry {
 			return true;
 		}
 
-
-
-
 		public void setCommitted() {
 			this.commited = true;
-
-			
 		}
-
 	}
 	
 	
 	public void commitEntry(int i) { 
 		
-		
 		String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
 		String logFile = dire + BAR + "log_" + String.valueOf(port)+".txt";
 		entries.get(i).setCommitted();
+		String [] arra = entries.get(i).toString().split(":")[1].split("-");
+		switch (arra[0]) {
+			case "p":
+				tManager.putPair(arra[1], arra[2]);
+				break;
+			case "d":
+				tManager.removePair(arra[1]);
+				break;
+		}
 		
 		synchronized (f) {
 			f.delete();
@@ -301,8 +303,9 @@ public class LogEntry {
 			
 			f = new File(logFile);
 			try {
-				
-				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
+				//Escreve entries jah committed que nao deviam ir para o log
+				//mete enties nao-committed como committed e não as executa na tabela
+				BufferedWriter writer = new BufferedWriter(new FileWriter(f,false));
 				int j = 0;
 				for (Entry entry : entries) {
 					if(j < i && !entry.commited)
