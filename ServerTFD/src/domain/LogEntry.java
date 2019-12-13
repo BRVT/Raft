@@ -129,9 +129,10 @@ public class LogEntry {
 	public boolean writeLog(String command, int term, boolean commited, String id_command) {
 
 		Entry aux = new Entry(prevLogIndex,command,term,commited,id_command);
-		if(entries.contains(aux)) {
-			return false;
-		}else {
+		for (Entry entry : entries) {
+			if(entry.getClientIDCommand().compareTo(aux.getClientIDCommand()) == 0)
+				return false;
+		}
 			lastEntry =  aux;
 			
 			synchronized (entries) {
@@ -153,7 +154,7 @@ public class LogEntry {
 					generateSnapshot();
 					clearLogFile();
 				}
-				
+				System.out.println(lastEntry.toString() + " <-------------------------------");
 				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 				writer.write(lastEntry.toString());
 				
@@ -165,7 +166,7 @@ public class LogEntry {
 			} catch (IOException e) {
 				return false;
 			}
-		}
+		
 	}
 
 	private void generateSnapshot() throws IOException {
@@ -293,6 +294,7 @@ public class LogEntry {
 		String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
 		String logFile = dire + BAR + "log_" + String.valueOf(port)+".txt";
 		entries.get(i).setCommitted();
+		
 		synchronized (f) {
 			f.delete();
 			
@@ -353,7 +355,7 @@ public class LogEntry {
 	}
 
 	public ArrayList<Entry> getLastEntriesSince(Entry e) {
-
+		
 		ArrayList <Entry> array = new ArrayList<>();
 		int flag = 0;
 		if(e == null) {
@@ -362,6 +364,7 @@ public class LogEntry {
 		for(Entry entry : entries) {
 
 			if(flag == 1) {
+				
 				array.add(entry);
 			}
 			if((entry.equals(e))&& flag != 1) {

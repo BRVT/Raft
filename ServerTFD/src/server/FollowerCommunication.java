@@ -27,7 +27,7 @@ public class FollowerCommunication extends Thread {
 	private boolean forElection;
 	private LogEntry log;
 	private Server server;
-
+	private boolean readyForAnswer;
 
 
 	public FollowerCommunication(Server server, int delay, boolean forElection, int port) { 
@@ -104,16 +104,15 @@ public class FollowerCommunication extends Thread {
 									if(count >= 2) {
 										log.commitEntry(log.getCommitIndex()+1);
 										
-										
-										
-									}
+									} 
 									count = 0;
 								
 								
 								server.getAnswers().get(index).notifyAll();
 							}
-							sendCommitMessage(iServer, log.getCommitIndex());
+							
 						}
+						
 						this.lastEntry = e;
 					}
 				}
@@ -148,19 +147,7 @@ public class FollowerCommunication extends Thread {
 		} 
 	}
 
-	private void sendCommitMessage(IServerService iServer2, int commitIndex) {
-		
-		try {
-			
-			iServer2.commitEntryRPC(commitIndex);
-
-				
-
-		} catch (RemoteException e) {
-		
-		}
-		
-	}
+	
 
 	public void connect() {
 		try {
@@ -206,4 +193,12 @@ public class FollowerCommunication extends Thread {
 
 	}
 
+	public boolean isReadyForAnswer() {
+		return readyForAnswer;
+	}
+
+	public void setReadyForAnswer(boolean readyForAnswer) {
+		this.readyForAnswer = readyForAnswer;
+	}
+	
 } 

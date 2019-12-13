@@ -14,5 +14,5 @@ public interface IServerService extends Remote {
 
 	public int RequestVoteRPC(int term, int port, int prevLogIndex, int prevLogTerm) throws RemoteException;
 
-	public void commitEntryRPC(int commitIndex) throws RemoteException;
+	
 }

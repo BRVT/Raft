@@ -21,7 +21,8 @@ public class Server implements IServer {
 	private STATE state;
 	private int term;
 	private int votedFor;
-
+	
+	private boolean readyToAnswer;
 	private Timer timer;
 
 	private ArrayList<String> pendentEntry = new ArrayList<>();
@@ -54,6 +55,7 @@ public class Server implements IServer {
 			answers.add(new ArrayList<>());
 			i ++;
 		}
+		this.readyToAnswer = false;
 	} 
 
 	/**
@@ -105,6 +107,7 @@ public class Server implements IServer {
 		if(this.isLeader()) {
 			answers.add(new ArrayList<>());
 			synchronized(s){
+				
 				//
 				String aux = s.split(":")[0];
 				//
@@ -125,6 +128,8 @@ public class Server implements IServer {
 				}
 				
 				this.pendentEntry.add(s);
+				int i = log.getCommitIndex();
+				
 				return tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
 
 			}
@@ -179,7 +184,12 @@ public class Server implements IServer {
 			timer.cancel();
 			this.leaderPort = leaderID;
 			if(leaderPort == votedFor) votedFor = 0;
-			if(entry == null) { 			
+			
+			if(leaderCommit > log.getCommitIndex()) {
+				log.commitEntry(leaderCommit);
+			}
+			
+			if(entry == null) { 
 				ret = 0;
 			}else {
 				System.out.println(this.port);
@@ -193,6 +203,8 @@ public class Server implements IServer {
 				if(operation.compareTo("g") == 0)
 					if(ret != -1)
 						ret = 0;
+				
+				
 			}
 			resetTimer();
 		}
@@ -362,10 +374,12 @@ public class Server implements IServer {
 		return answers.size()-1;
 	}
 
-	public void commitEntryRPC(int commitIndex) {
-		log.commitEntry(commitIndex);
+	public void answerReady(boolean b) {
+		readyToAnswer = b;
 		
 	}
+
+	
 
 
 }
