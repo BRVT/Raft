@@ -111,17 +111,17 @@ public class LogEntry {
 			if(e.isComitted()) {
 				
 				this.commitIndex ++;
+				
+				String[] stArr = st.split(":")[1].split("-");
+				
+				if(stArr.length == 2) {//remove
+					tManager.removePair(stArr[1]);
+				}else 
+					if(stArr.length == 3) {//put
+						tManager.putPair(stArr[1], stArr[2]);
+					}
+				prevLogIndex ++;
 			}
-			String[] stArr = st.split(":")[1].split("-");
-			
-			if(stArr.length == 2) {//remove
-				tManager.removePair(stArr[1]);
-			}else 
-				if(stArr.length == 3) {//put
-					tManager.putPair(stArr[1], stArr[2]);
-				}
-			prevLogIndex ++;
-
 		}
 		br.close();
 	}
