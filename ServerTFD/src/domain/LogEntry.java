@@ -22,6 +22,8 @@ public class LogEntry {
 	// - 
 	private static final String BAR = System.getProperty("file.separator");
 
+	private static final int MAX_FILE_SIZE_BYTES = 1000;
+
 	private File f;
 	private File s;
 	private File dir;
@@ -151,16 +153,16 @@ public class LogEntry {
 		}
 
 		try {
-			if(f.length() > 1000) {
-				generateSnapshot();
-				clearLogFile();
-			}
-
 			BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 			writer.write(lastEntry.toString());
 			writer.newLine();
 			writer.close();
-
+			
+			if(f.length() > MAX_FILE_SIZE_BYTES) {
+				generateSnapshot();
+				clearLogFile();
+			}
+			
 			return true;
 
 		} catch (IOException e) {
