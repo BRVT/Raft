@@ -180,6 +180,13 @@ public class LogEntry {
 		for (Pair<String, String> pair : table) {
 			writer.write(pair.getKey() + "-" + pair.getValue());
 			writer.newLine();
+			
+		}
+		
+		for (Entry entry : entries) {
+			if (entry.isComitted()) {
+				entry.setISnap();
+			}
 		}
 		
 		writer.close();
@@ -194,16 +201,17 @@ public class LogEntry {
 			
 			
 			BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
-		
+
 			//Assumindo que o que estah no ficheiro log = array entries
-			
 			for (Entry entry : entries) {
+
 				if(!entry.isComitted()) { //se ja tiver committed, ja foi para o snapshot, logo pode-se remover
 					System.out.println("to commit" + entry);
 					writer.write(entry.toString());
 					writer.newLine();
 				}
 			}
+
 			
 			writer.close();
 		}
@@ -215,6 +223,7 @@ public class LogEntry {
 		private int term;
 		private boolean commited;
 		private String clientIDCommand;
+		private boolean inSnap;
 
 
 		public Entry(int index, String command, int term, boolean commited, String id_command) {
@@ -279,6 +288,14 @@ public class LogEntry {
 		public void setCommitted() {
 			this.commited = true;
 		}
+		
+		public void setISnap() {
+			this.inSnap = true;
+		}
+		
+		public boolean getISnap() {
+			return this.inSnap;
+		}
 	}
 	
 	
@@ -286,16 +303,7 @@ public class LogEntry {
 		
 		String dire = "src" + BAR +"server" +BAR +"file_server_"+String.valueOf(port);
 		String logFile = dire + BAR + "log_" + String.valueOf(port)+".txt";
-		entries.get(i).setCommitted();
 		String [] arra = entries.get(i).toString().split(":")[1].split("-");
-		switch (arra[0]) {
-			case "p":
-				tManager.putPair(arra[1], arra[2]);
-				break;
-			case "d":
-				tManager.removePair(arra[1]);
-				break;
-		}
 		
 		synchronized (f) {
 			f.delete();
@@ -305,14 +313,26 @@ public class LogEntry {
 			try {
 				//Escreve entries jah committed que nao deviam ir para o log
 				//mete enties nao-committed como committed e não as executa na tabela
-				BufferedWriter writer = new BufferedWriter(new FileWriter(f,false));
+				BufferedWriter writer = new BufferedWriter(new FileWriter(f,true));
 				int j = 0;
 				for (Entry entry : entries) {
-					if(j < i && !entry.commited)
-						entry.setCommitted();
-					System.out.println(entry.toString());
-					writer.write(entry.toString());
-					writer.newLine();
+					if (!entry.getISnap()) {
+						if(j <= i && !entry.commited) {
+							entry.setCommitted();
+							switch (arra[0]) {
+							case "p":
+								tManager.putPair(arra[1], arra[2]);
+								break;
+							case "d":
+								tManager.removePair(arra[1]);
+								break;
+							}
+						}
+						writer.write(entry.toString());
+						System.out.println(entry.toString());
+						writer.newLine();
+					}
+					
 					j ++;
 				}
 				writer.close();
