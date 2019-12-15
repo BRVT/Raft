@@ -56,14 +56,10 @@ public class FollowerCommunication extends Thread {
 						Thread.sleep(delay); 
 						connect();
 					}
-					
-					
-						System.out.println("vou dormir");
-						Thread.sleep(5000);
-						System.out.println("acordei");
+
+					Thread.sleep(1000);
 					
 					Entry e = log.getLastEntry();
-
 
 					if( e == (null) || e.equals(lastEntry) ){
 						verify = sendHeartBeat(iServer, null, 0);
@@ -78,41 +74,38 @@ public class FollowerCommunication extends Thread {
 
 							verify = sendHeartBeat(iServer, entry.toString(), 0);
 						}
-						
-						
-						synchronized(server.getAnswers().get(index)) {
-							
-							
-							server.addAnswers(index, verify);
-							
-							
 
-							if(server.getnAnswers(index) < 3) {
+
+						synchronized(server.getAnswers().get(index)) {
+
+
+							server.addAnswers(index, verify);
+
+
+
+							if(server.getnAnswers(index) < 2) {
 								try {
 									server.getAnswers().get(index).wait(8000);
-									
+
 								}catch (IllegalMonitorStateException i) {
 
 								}
 							}else {
 								int count = 0;
-								
-									for (Integer integer : server.getAnswers().get(index)) {
-										if(integer == 0)
-											count ++;
-									}
-									if(count >= 2) {
-										log.commitEntry(log.getCommitIndex()+1);
-										
-									} 
-									count = 0;
-								
-								
+
+								for (Integer integer : server.getAnswers().get(index)) {
+									if(integer == 0)
+										count ++;
+								}
+								if(count >= 2) {
+									log.commitEntry(log.getCommitIndex()+1);
+
+								} 
 								server.getAnswers().get(index).notifyAll();
 							}
-							
+
 						}
-						
+
 						this.lastEntry = e;
 					}
 				}
@@ -147,7 +140,7 @@ public class FollowerCommunication extends Thread {
 		} 
 	}
 
-	
+
 
 	public void connect() {
 		try {
@@ -200,5 +193,5 @@ public class FollowerCommunication extends Thread {
 	public void setReadyForAnswer(boolean readyForAnswer) {
 		this.readyForAnswer = readyForAnswer;
 	}
-	
+
 } 

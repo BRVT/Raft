@@ -119,11 +119,11 @@ public class Server implements IServer {
 
 
 			int cIndex = log.getCommitIndex();
-			//
+			//uniqueID | id _ operation
 			String aux = s.split(":")[0];
-			//
+			//operation
 			String operation = aux.split("_")[1];
-			//
+			//operation : values
 			String object = s.split("_")[1];
 			//
 			String ss = s.split("_")[0];
@@ -163,6 +163,9 @@ public class Server implements IServer {
 
 		case "d":
 			return log.writeLog(operation +"-" + object.split(":")[1], this.term, false, s ) ? 0 : 1;
+			
+		case "c":
+			return log.writeLog(operation +"-" + object.split(":")[1] +"-"+object.split(":")[2] +"-"+object.split(":")[3], term, false, s) ? 0 : 1;
 
 		default:
 			return -1;
@@ -201,7 +204,7 @@ public class Server implements IServer {
 			if(entry == null) { 
 				ret = 0;
 			}else {
-				System.out.println(this.port);
+				
 				String operation = entry.split(":")[1].split("-")[0];
 
 				String object = entry.split(":")[1].replace("-", ":");
@@ -212,7 +215,8 @@ public class Server implements IServer {
 				if(operation.compareTo("g") == 0)
 					if(ret != -1)
 						ret = 0;
-
+				
+				System.out.println("Follower return " + ret);
 
 			}
 			resetTimer();

@@ -61,6 +61,13 @@ public class TableManager {
 		
 		return sb.toString();
 	}
-	
 
+	public void cas(String key, String oldValue, String newValue) {
+		for (Pair<String, String> pair : table) {
+			if(pair.getKey().compareTo(key) == 0 && pair.getValue().compareTo(oldValue) == 0) {
+				table.remove(pair);
+				table.add(new Pair<>(key, newValue));
+			}
+		}
+	}
 }

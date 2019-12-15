@@ -69,7 +69,14 @@ public class SimpleClient {
 					break;
 
 				case "cas":
-					//?????????
+					if(request.split(" ").length == 4) {
+						String key = request.split(" ")[1];
+						String oldValue = request.split(" ")[2];
+						String newValue = request.split(" ")[3];
+						doRequest("c:"+key+":"+oldValue+":"+newValue,id);
+					}else {
+						System.out.println("Insira no formato cas <key> <old_value> <new_value>");
+					}
 					break;
 
 				default:

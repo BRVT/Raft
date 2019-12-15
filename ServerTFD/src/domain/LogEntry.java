@@ -327,6 +327,10 @@ public class LogEntry {
 							case "d":
 								tManager.removePair(arra[1]);
 								break;
+							
+							case "c":
+								tManager.cas(arra[1], arra[2], arra[3]);
+								break;
 							}
 						}
 						writer.write(entry.toString());
