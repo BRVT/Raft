@@ -1,37 +1,51 @@
 package server;
 
-import java.util.*;
+import java.lang.Thread.State;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Timer;
+
+import javax.naming.spi.ResolveResult;
+
 import domain.LogEntry;
 import domain.TableManager;
 import enums.STATE;
 import server.constants.Constants;
-import javafx.util.Pair;
 
 public class Server implements IServer {
 
 	private int port;
-	
+
 	private int leaderPort;
 	private STATE state;
 	private int term;
 	private int votedFor;
 
+	private boolean readyToAnswer;
 	private Timer timer;
+
 
 	private ArrayList<String> pendentEntry = new ArrayList<>();
 	private LogEntry log = new LogEntry();
-	private Map<Integer, Integer> answers = new HashMap<>();
+	//private Map<Integer, Pair<Integer,Integer>> answers = new HashMap<>();
 
+	private List<List<Integer>> answers = new ArrayList<>();
 	private Map<Integer, Integer> votes = new HashMap<>();
 	private FollowerCommunication first;
 	private FollowerCommunication second;
 	private FollowerCommunication third;
 	private FollowerCommunication fourth;
 
+	private String result = null;
+
 	private List<FollowerCommunication> followers = Arrays.asList(first,second,third,fourth);
-	
+
 	private TableManager tManager;
-	
+
 	private int nAnswers;
 
 	public Server(int port){
@@ -42,6 +56,12 @@ public class Server implements IServer {
 		this.nAnswers = 0;
 		this.tManager = TableManager.getInstance();
 		log.createFile(this.port);
+		int i = 0;
+		while(i < log.getEntriesSize()) {
+			answers.add(new ArrayList<>());
+			i ++;
+		}
+		this.readyToAnswer = false;
 	} 
 
 	/**
@@ -77,26 +97,11 @@ public class Server implements IServer {
 			f.start();
 			j++;
 		}
-		
-		log.setFollowerThreads(followers);
-		
-		//verificar isto
-		while(true) {
-			synchronized (answers) {
-				if(answers.size() > 2){
-					int count = 0;
-					for (Integer i : answers.values()) {
-						if(i == 0) 
-							count ++;
-					}
-					if(count >= 2) {
-						log.commitEntry();
-					}
 
-					answers = new HashMap<>();
-				}
-			}
-		}
+		log.setFollowerThreads(followers);
+
+
+
 	}
 
 	/**
@@ -106,31 +111,41 @@ public class Server implements IServer {
 	 */
 	public String request(String s, int id)  {
 		if(this.isLeader()) {
-			synchronized(s){
-				//
-				String aux = s.split(":")[0];
-				//
-				String operation = aux.split("_")[1];
-				//
-				String object = s.split("_")[1];
-				//
-				String ss = s.split("_")[0];
-				
-				
-				if(operation.compareTo("l") == 0) {
-					return tManager.toString();
-				}
-					
-				if(operation.compareTo("g") == 0) {
-					String value = tManager.getValue(object.split(":")[1]);
-					return value instanceof String ? value : "Nao existe";
-				}
-				
-				this.pendentEntry.add(s);
-				return tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
+			answers.add(new ArrayList<>());
 
+			result = null;
+
+
+
+
+			int cIndex = log.getCommitIndex();
+			//uniqueID | id _ operation
+			String aux = s.split(":")[0];
+			//operation
+			String operation = aux.split("_")[1];
+			//operation : values
+			String object = s.split("_")[1];
+			//
+			String ss = s.split("_")[0];
+
+
+			if(operation.compareTo("l") == 0) {
+				return tManager.toString();
 			}
+
+			if(operation.compareTo("g") == 0) {
+				String value = tManager.getValue(object.split(":")[1]);
+				return value instanceof String ? value : "Nao existe";
+			}
+
+
+			this.pendentEntry.add(s);
+			result = tableManager(operation, object,ss) == 0 ? "Sucesso!" : "Falhou!";
+			
+			
+			return result;
 		}
+
 		else {
 			//devolve porto do leader
 			return "& " + String.valueOf(leaderPort);
@@ -144,20 +159,20 @@ public class Server implements IServer {
 		switch (operation) {
 
 		case "p":
-			System.out.println(object);
-			tManager.putPair(object.split(":")[1], object.split(":")[2]);
 			return log.writeLog(operation +"-" + object.split(":")[1]+"-"+object.split(":")[2], this.term, false, s ) ? 0 : 1;	
-			
+
 		case "d":
-			tManager.removePair(object.split(":")[1]);
 			return log.writeLog(operation +"-" + object.split(":")[1], this.term, false, s ) ? 0 : 1;
 			
+		case "c":
+			return log.writeLog(operation +"-" + object.split(":")[1] +"-"+object.split(":")[2] +"-"+object.split(":")[3], term, false, s) ? 0 : 1;
+
 		default:
 			return -1;
 		}
 	}
 
-	
+
 
 	/**
 	 * Recebe AppendEntriesRPC do Leader
@@ -181,20 +196,28 @@ public class Server implements IServer {
 			timer.cancel();
 			this.leaderPort = leaderID;
 			if(leaderPort == votedFor) votedFor = 0;
-			if(entry == null) { 			
+
+			if(leaderCommit > log.getCommitIndex()) {
+				log.commitEntry(leaderCommit);
+			}
+
+			if(entry == null) { 
 				ret = 0;
 			}else {
-				System.out.println(this.port);
+				
 				String operation = entry.split(":")[1].split("-")[0];
-				
+
 				String object = entry.split(":")[1].replace("-", ":");
-				
+
 				String s = entry.split(":")[4];
-				
+
 				ret = tableManager(operation, object, s);
 				if(operation.compareTo("g") == 0)
 					if(ret != -1)
 						ret = 0;
+				
+				System.out.println("Follower return " + ret);
+
 			}
 			resetTimer();
 		}
@@ -220,6 +243,11 @@ public class Server implements IServer {
 
 			return 0;
 		}
+
+		else if(prevLogTerm == log.getPrevLogTerm() && prevLogIndex > log.getPrevLogIndex()) {
+			return this.term;
+		}
+
 
 		else if (votedFor != 0) {
 
@@ -324,10 +352,12 @@ public class Server implements IServer {
 		this.timer.cancel();
 	}
 
+	public int getnAnswers(int index) {
+		return answers.get(index).size();
+	}
 	public int getnAnswers() {
 		return nAnswers;
 	}
-
 	public void setnAnswers(int nAnswers) {
 		this.nAnswers = nAnswers;
 	}
@@ -340,17 +370,33 @@ public class Server implements IServer {
 		return this.log;
 	}
 
-	public Map<Integer, Integer> getAnswers() {
+	public List<List<Integer>> getAnswers() {
 		return answers;
 	}
 
-	public void addAnswers(int id, int flag) {
-		this.answers.put(id, flag);
+	public void addAnswers(int index,int flag) {
+		this.answers.get(index).add(flag);
 	}
 
 	public List<FollowerCommunication> getFollowers() {
 		return followers;
 	}
+
+	public int addNewEntry() {
+		answers.add(new ArrayList<Integer>());
+		return answers.size()-1;
+	}
+
+	public void answerReady(boolean b) {
+		readyToAnswer = b;
+
+	}
+
+	public boolean getAnReady() {
+		return readyToAnswer;
+	}
+
+
 
 
 }

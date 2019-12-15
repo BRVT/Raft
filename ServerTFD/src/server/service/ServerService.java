@@ -42,9 +42,13 @@ public class ServerService extends UnicastRemoteObject implements IServerService
 		return server.getPrevLogIndex();
 	}
 	
+	
+	
 	public void run() {
 		server.run();
 	}
+
+	
 
 	
 }

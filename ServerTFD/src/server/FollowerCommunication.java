@@ -5,6 +5,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.List;
 
 import domain.LogEntry;
 import domain.LogEntry.Entry;
@@ -26,7 +27,7 @@ public class FollowerCommunication extends Thread {
 	private boolean forElection;
 	private LogEntry log;
 	private Server server;
-
+	private boolean readyForAnswer;
 
 
 	public FollowerCommunication(Server server, int delay, boolean forElection, int port) { 
@@ -55,18 +56,18 @@ public class FollowerCommunication extends Thread {
 						Thread.sleep(delay); 
 						connect();
 					}
-					
-					
-						System.out.println("vou dormir");
-						Thread.sleep(5000);
-						System.out.println("acordei");
+
+					Thread.sleep(1000);
 					
 					Entry e = log.getLastEntry();
-
 
 					if( e == (null) || e.equals(lastEntry) ){
 						verify = sendHeartBeat(iServer, null, 0);
 					}else {
+						int index;
+						synchronized(server.getAnswers()) {
+							index = server.getAnswers().size() - 1;
+						}
 						System.out.println("Veio entry " + e.toString());
 						ArrayList <Entry> array = log.getLastEntriesSince(lastEntry);
 						for (Entry entry : array) {
@@ -74,23 +75,37 @@ public class FollowerCommunication extends Thread {
 							verify = sendHeartBeat(iServer, entry.toString(), 0);
 						}
 
-						synchronized(server.getAnswers()) {
-							
-							server.addAnswers(portF, verify);
-							server.incrementNAnswers();
 
-							if(server.getnAnswers() < 3) {
+						synchronized(server.getAnswers().get(index)) {
+
+
+							server.addAnswers(index, verify);
+
+
+
+							if(server.getnAnswers(index) < 2) {
 								try {
-									server.getAnswers().wait(8000);
-									server.setnAnswers(0);
+									server.getAnswers().get(index).wait(8000);
+
 								}catch (IllegalMonitorStateException i) {
 
 								}
 							}else {
-								server.setnAnswers(0);
-								server.getAnswers().notifyAll();
+								int count = 0;
+
+								for (Integer integer : server.getAnswers().get(index)) {
+									if(integer == 0)
+										count ++;
+								}
+								if(count >= 2) {
+									log.commitEntry(log.getCommitIndex()+1);
+
+								} 
+								server.getAnswers().get(index).notifyAll();
 							}
+
 						}
+
 						this.lastEntry = e;
 					}
 				}
@@ -124,6 +139,8 @@ public class FollowerCommunication extends Thread {
 			e.printStackTrace(); 
 		} 
 	}
+
+
 
 	public void connect() {
 		try {
@@ -167,6 +184,14 @@ public class FollowerCommunication extends Thread {
 		}
 		return 0;
 
+	}
+
+	public boolean isReadyForAnswer() {
+		return readyForAnswer;
+	}
+
+	public void setReadyForAnswer(boolean readyForAnswer) {
+		this.readyForAnswer = readyForAnswer;
 	}
 
 } 
